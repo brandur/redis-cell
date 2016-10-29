@@ -1,0 +1,14 @@
+[package]
+name = "redis-throttle"
+version = "0.1.0"
+authors = ["Brandur <brandur@mutelight.org>"]
+build = "build.rs"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+libc = "0.2.0"
+
+[build-dependencies]
+gcc = "*"
