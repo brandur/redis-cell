@@ -2,7 +2,7 @@ extern crate libc;
 
 mod redis;
 
-use libc::{c_int, c_longlong};
+use libc::c_int;
 use redis::*;
 
 const MODULE_NAME: &'static str = "redis-throttle";
@@ -14,9 +14,17 @@ const MODULE_VERSION: c_int = 1;
 pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut RedisModuleString,
                                         argc: c_int) -> c_int {
-    println!("hello from throttle");
-    RedisModule_ReplyWithLongLong(ctx,
-                                  RedisModule_GetSelectedDb(ctx) as c_longlong);
+    let key = "throttle";
+    let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
+    let keyPtr = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_WRITE);
+
+    let val = "val";
+    let valStr = RedisModule_CreateString(ctx, format!("{}\0", val).as_ptr(), val.len());
+
+    RedisModule_StringSet(keyPtr, valStr);
+    RedisModule_ReplyWithString(ctx, valStr);
+    RedisModule_CloseKey(keyPtr);
+
     return REDISMODULE_OK;
 }
 
@@ -28,7 +36,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
                                      argc: c_int) -> c_int {
     unsafe {
         if Export_RedisModule_Init(ctx,
-                                   format!("{}{}", MODULE_NAME, "\0").as_ptr(),
+                                   format!("{}\0", MODULE_NAME).as_ptr(),
                                    MODULE_VERSION, REDISMODULE_APIVER_1)
                                    == REDISMODULE_ERR {
             return REDISMODULE_ERR;
