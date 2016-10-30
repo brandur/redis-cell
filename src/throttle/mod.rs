@@ -6,6 +6,18 @@ pub struct Rate {
 }
 
 impl Rate {
+    pub fn per_day(n: i64) -> Rate {
+        Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::days(n) })
+    }
+
+    pub fn per_hour(n: i64) -> Rate {
+        Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::hours(n) })
+    }
+
+    pub fn per_minute(n: i64) -> Rate {
+        Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::minutes(n) })
+    }
+
     pub fn per_second(n: i64) -> Rate {
         Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::seconds(n) })
     }
