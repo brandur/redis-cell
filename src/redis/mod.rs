@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
 extern crate libc;
+
+pub mod store;
+
 use libc::{c_int, c_longlong, size_t};
 
 // Rust can't link against C macros (#define) so we just redefine them here.
