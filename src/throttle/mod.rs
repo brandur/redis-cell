@@ -1,4 +1,10 @@
+// Remove as soon as it's not annoying as fuck to have this (i.e. we've
+// implemented more of the library).
+#![allow(dead_code)]
+
 extern crate time;
+
+pub mod store;
 
 pub struct Rate {
     count: i64,
@@ -28,6 +34,28 @@ impl Rate {
             count: n,
             period: div_durations(make_duration(1), make_duration(n))
         }
+    }
+}
+
+pub struct RateLimitResult {
+    pub limit: i64,
+    pub remaining: i64,
+    pub reset_after: time::Duration,
+    pub retry_after: time::Duration,
+}
+
+pub struct RateLimiter {
+    quota: RateQuota,
+    store: *mut store::Store,
+}
+
+impl RateLimiter {
+    pub fn new(store: *mut store::Store, quota: RateQuota) -> RateLimiter {
+        RateLimiter{quota: quota, store: store}
+    }
+
+    pub fn rate_limit(key: &str, quantity: i64) -> (bool, RateLimitResult) {
+        (false, RateLimitResult{})
     }
 }
 
