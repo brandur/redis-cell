@@ -54,8 +54,8 @@ impl RateLimiter {
         RateLimiter{quota: quota, store: store}
     }
 
-    pub fn rate_limit(key: &str, quantity: i64) -> (bool, RateLimitResult) {
-        (false, RateLimitResult{})
+    pub fn rate_limit(key: &str, quantity: i64) -> Result<(bool, RateLimitResult), store::StoreError> {
+        Ok((false, RateLimitResult{}))
     }
 }
 
