@@ -1,6 +1,7 @@
 extern crate libc;
 
 mod redis;
+pub mod throttle;
 
 use libc::c_int;
 use redis::*;
