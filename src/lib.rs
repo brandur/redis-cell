@@ -15,7 +15,7 @@ const MODULE_VERSION: c_int = 1;
 pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut RedisModuleString,
                                         argc: c_int)
-                                        -> c_int {
+                                        -> Status {
     let key = "throttle";
     let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
     let keyPtr = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_WRITE);
@@ -27,7 +27,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
     RedisModule_ReplyWithString(ctx, valStr);
     RedisModule_CloseKey(keyPtr);
 
-    return REDISMODULE_OK;
+    return Status::Ok;
 }
 
 #[allow(non_snake_case)]
@@ -51,7 +51,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
                                      "readonly\0".as_ptr(),
                                      0,
                                      0,
-                                     0) == REDISMODULE_ERR {
+                                     0) == Status::Err {
             return Status::Err;
         }
     }

@@ -8,9 +8,6 @@ use libc::{c_int, c_longlong, size_t};
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
-pub const REDISMODULE_OK: c_int = 0;
-pub const REDISMODULE_ERR: c_int = 1;
-
 #[derive(PartialEq)]
 pub enum Status {
     Ok = 0,
@@ -39,7 +36,7 @@ pub struct RedisModuleString;
 pub type RedisModuleCmdFunc = extern "C" fn(ctx: *mut RedisModuleCtx,
                                             argv: *mut RedisModuleString,
                                             argc: c_int)
-                                            -> c_int;
+                                            -> Status;
 
 // Redis doesn't make this easy for us by exporting a library, so instead what
 // we do is bake redismodule.h's symbols into a library of our construction
@@ -72,7 +69,7 @@ extern "C" {
                                                         firstkey: c_int,
                                                         lastkey: c_int,
                                                         keystep: c_int)
-                                                        -> c_int;
+                                                        -> Status;
 
     pub static RedisModule_CreateString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                        ptr: *const u8,
@@ -88,13 +85,13 @@ extern "C" {
 
     pub static RedisModule_ReplyWithLongLong: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                             ll: c_longlong)
-                                                            -> c_int;
+                                                            -> Status;
 
     pub static RedisModule_ReplyWithString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                           str: *mut RedisModuleString)
-                                                          -> c_int;
+                                                          -> Status;
 
     pub static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
                                                     str: *mut RedisModuleString)
-                                                    -> c_int;
+                                                    -> Status;
 }
