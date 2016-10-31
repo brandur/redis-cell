@@ -61,7 +61,13 @@ impl RateLimiter {
     pub fn rate_limit(key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), store::StoreError> {
-        Ok((false, RateLimitResult {}))
+        Ok((false,
+            RateLimitResult {
+            limit: 0,
+            remaining: 0,
+            reset_after: time::Duration::seconds(1),
+            retry_after: time::Duration::seconds(1),
+        }))
     }
 }
 

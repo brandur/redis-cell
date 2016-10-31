@@ -4,7 +4,7 @@ mod redis;
 pub mod throttle;
 
 use libc::c_int;
-use redis::*;
+use redis::ffi::*;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
@@ -41,7 +41,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
         if Export_RedisModule_Init(ctx,
                                    format!("{}\0", MODULE_NAME).as_ptr(),
                                    MODULE_VERSION,
-                                   REDISMODULE_APIVER_1) == REDISMODULE_ERR {
+                                   REDISMODULE_APIVER_1) == Status::Err {
             return REDISMODULE_ERR;
         }
 
