@@ -33,7 +33,9 @@ impl<'a> store::Store for RedisStore<'a> {
         Result::Err(store::StoreError::new("not implemented"))
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), store::StoreError> {}
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), store::StoreError> {
+        Result::Err(store::StoreError::new("not implemented"))
+    }
 
     fn set_if_not_exists_with_ttl(&self,
                                   key: &str,
