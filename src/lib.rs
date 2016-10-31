@@ -36,13 +36,13 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
 pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
                                      argv: *mut *mut RedisModuleString,
                                      argc: c_int)
-                                     -> c_int {
+                                     -> Status {
     unsafe {
         if Export_RedisModule_Init(ctx,
                                    format!("{}\0", MODULE_NAME).as_ptr(),
                                    MODULE_VERSION,
                                    REDISMODULE_APIVER_1) == Status::Err {
-            return REDISMODULE_ERR;
+            return Status::Err;
         }
 
         if RedisModule_CreateCommand(ctx,
@@ -52,11 +52,11 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
                                      0,
                                      0,
                                      0) == REDISMODULE_ERR {
-            return REDISMODULE_ERR;
+            return Status::Err;
         }
     }
 
-    return REDISMODULE_OK;
+    return Status::Ok;
 }
 
 #[cfg(test)]
