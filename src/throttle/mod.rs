@@ -29,10 +29,11 @@ impl Rate {
     }
 
     pub fn per_time<F>(n: i64, make_duration: F) -> Rate
-        where F : Fn(i64) -> time::Duration {
+        where F: Fn(i64) -> time::Duration
+    {
         Rate {
             count: n,
-            period: div_durations(make_duration(1), make_duration(n))
+            period: div_durations(make_duration(1), make_duration(n)),
         }
     }
 }
@@ -51,11 +52,16 @@ pub struct RateLimiter {
 
 impl RateLimiter {
     pub fn new(store: *mut store::Store, quota: RateQuota) -> RateLimiter {
-        RateLimiter{quota: quota, store: store}
+        RateLimiter {
+            quota: quota,
+            store: store,
+        }
     }
 
-    pub fn rate_limit(key: &str, quantity: i64) -> Result<(bool, RateLimitResult), store::StoreError> {
-        Ok((false, RateLimitResult{}))
+    pub fn rate_limit(key: &str,
+                      quantity: i64)
+                      -> Result<(bool, RateLimitResult), store::StoreError> {
+        Ok((false, RateLimitResult {}))
     }
 }
 
@@ -71,6 +77,5 @@ fn div_durations(x: time::Duration, y: time::Duration) -> time::Duration {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 }

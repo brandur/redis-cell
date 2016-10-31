@@ -14,7 +14,8 @@ const MODULE_VERSION: c_int = 1;
 #[no_mangle]
 pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut RedisModuleString,
-                                        argc: c_int) -> c_int {
+                                        argc: c_int)
+                                        -> c_int {
     let key = "throttle";
     let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
     let keyPtr = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_WRITE);
@@ -34,19 +35,23 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
 #[no_mangle]
 pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
                                      argv: *mut *mut RedisModuleString,
-                                     argc: c_int) -> c_int {
+                                     argc: c_int)
+                                     -> c_int {
     unsafe {
         if Export_RedisModule_Init(ctx,
                                    format!("{}\0", MODULE_NAME).as_ptr(),
-                                   MODULE_VERSION, REDISMODULE_APIVER_1)
-                                   == REDISMODULE_ERR {
+                                   MODULE_VERSION,
+                                   REDISMODULE_APIVER_1) == REDISMODULE_ERR {
             return REDISMODULE_ERR;
         }
 
-        if RedisModule_CreateCommand(ctx, "throttle\0".as_ptr(),
+        if RedisModule_CreateCommand(ctx,
+                                     "throttle\0".as_ptr(),
                                      Some(Throttle_RedisCommand),
-                                     "readonly\0".as_ptr(), 0, 0, 0)
-                                     == REDISMODULE_ERR {
+                                     "readonly\0".as_ptr(),
+                                     0,
+                                     0,
+                                     0) == REDISMODULE_ERR {
             return REDISMODULE_ERR;
         }
     }
@@ -57,6 +62,5 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 }
