@@ -18,7 +18,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         -> Status {
     let key = "throttle";
     let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
-    let keyPtr = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_WRITE);
+    let keyPtr = RedisModule_OpenKey(ctx, keyStr, KeyMode::Write);
 
     let val = "val";
     let valStr = RedisModule_CreateString(ctx, format!("{}\0", val).as_ptr(), val.len());

@@ -9,13 +9,16 @@ use libc::{c_int, c_longlong, size_t};
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
 #[derive(PartialEq)]
+pub enum KeyMode {
+    Read = (1 << 0),
+    Write = (1 << 1),
+}
+
+#[derive(PartialEq)]
 pub enum Status {
     Ok = 0,
     Err = 1,
 }
-
-pub const REDISMODULE_READ: c_int = (1 << 0);
-pub const REDISMODULE_WRITE: c_int = (1 << 1);
 
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -80,7 +83,7 @@ extern "C" {
 
     pub static RedisModule_OpenKey: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                   keyname: *mut RedisModuleString,
-                                                  mode: c_int)
+                                                  mode: KeyMode)
                                                   -> *mut RedisModuleKey;
 
     pub static RedisModule_ReplyWithLongLong: extern "C" fn(ctx: *mut RedisModuleCtx,
