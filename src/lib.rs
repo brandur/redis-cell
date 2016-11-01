@@ -23,7 +23,9 @@ impl ThrottleCommand {
 }
 
 impl redis::Command for ThrottleCommand {
-    fn run(&self, r: redis::Redis, args: Vec<&str>) {}
+    fn run(&self, r: redis::Redis, args: Vec<&str>) {
+        println!("arguments = {:?}", args)
+    }
 }
 
 #[allow(non_snake_case)]
@@ -33,6 +35,8 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut *mut RedisModuleString,
                                         argc: c_int)
                                         -> Status {
+    // redis::harness_command(&ThrottleCommand {}, ctx, argv, argc);
+
     let key = "throttle";
     let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
     let keyPtr = RedisModule_OpenKey(ctx, keyStr, KeyMode::Write);
