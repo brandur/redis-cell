@@ -59,7 +59,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
             return Status::Err;
         }
 
-        for (_, command) in commands.into_iter().enumerate() {
+        for command in commands.iter() {
             if RedisModule_CreateCommand(ctx,
                                          format!("{}\0", command.name()).as_ptr(),
                                          Some(Throttle_RedisCommand),
