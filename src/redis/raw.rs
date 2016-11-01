@@ -38,7 +38,7 @@ pub struct RedisModuleKey;
 pub struct RedisModuleString;
 
 impl RedisModuleString {
-    fn as_string(&mut self) -> Result<String, string::FromUtf8Error> {
+    pub fn as_string(&mut self) -> Result<String, string::FromUtf8Error> {
         let mut length: libc::size_t = 0;
         let byte_str = RedisModule_StringPtrLen(self, &mut length);
 
