@@ -8,9 +8,12 @@ pub mod store;
 
 use libc;
 use std::string;
+use throttle::store::StoreError;
+
+pub type CommandError<'a> = StoreError<'a>;
 
 pub trait Command {
-    fn run(&self, r: Redis, args: Vec<&str>);
+    fn run(&self, r: Redis, args: Vec<&str>) -> Result<bool, CommandError>;
 }
 
 impl Command {}
@@ -28,10 +31,11 @@ fn get(key: &str) {
 pub fn harness_command(command: &Command,
                        ctx: *mut raw::RedisModuleCtx,
                        argv: *mut *mut raw::RedisModuleString,
-                       argc: libc::c_int) {
+                       argc: libc::c_int)
+                       -> Result<bool, CommandError> {
     let r = Redis { ctx: ctx };
     let args = parse_args(argv, argc).unwrap();
-    command.run(r, args.iter().map(|s| s.as_str()).collect());
+    command.run(r, args.iter().map(|s| s.as_str()).collect())
 }
 
 pub fn parse_args(argv: *mut *mut raw::RedisModuleString,

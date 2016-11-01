@@ -5,6 +5,7 @@ pub mod throttle;
 
 use libc::c_int;
 use redis::raw::*;
+use std::error;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
@@ -23,8 +24,9 @@ impl ThrottleCommand {
 }
 
 impl redis::Command for ThrottleCommand {
-    fn run(&self, r: redis::Redis, args: Vec<&str>) {
-        println!("arguments = {:?}", args)
+    fn run(&self, r: redis::Redis, args: Vec<&str>) -> Result<bool, redis::CommandError> {
+        println!("arguments = {:?}", args);
+        Ok(true)
     }
 }
 
@@ -35,20 +37,10 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut *mut RedisModuleString,
                                         argc: c_int)
                                         -> Status {
-    redis::harness_command(&ThrottleCommand {}, ctx, argv, argc);
-
-    let key = "throttle";
-    let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
-    let keyPtr = RedisModule_OpenKey(ctx, keyStr, KeyMode::Write);
-
-    let val = "val";
-    let valStr = RedisModule_CreateString(ctx, format!("{}\0", val).as_ptr(), val.len());
-
-    RedisModule_StringSet(keyPtr, valStr);
-    RedisModule_ReplyWithString(ctx, valStr);
-    RedisModule_CloseKey(keyPtr);
-
-    return Status::Ok;
+    match redis::harness_command(&ThrottleCommand {}, ctx, argv, argc) {
+        Ok(_) => Status::Ok,
+        Err(_) => Status::Err,
+    }
 }
 
 #[allow(non_snake_case)]
