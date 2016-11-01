@@ -3,6 +3,7 @@
 extern crate libc;
 
 use libc::{c_int, c_longlong, size_t};
+use std::string;
 
 // Rust can't link against C macros (#define) so we just redefine them here.
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
@@ -35,6 +36,21 @@ pub struct RedisModuleKey;
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RedisModuleString;
+
+impl RedisModuleString {
+    fn as_string(&mut self) -> Result<String, string::FromUtf8Error> {
+        let mut length: libc::size_t = 0;
+        let byte_str = RedisModule_StringPtrLen(self, &mut length);
+
+        let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
+        for j in 0..length {
+            let byte: u8 = unsafe { *byte_str.offset(j as isize) };
+            vec_str[j] = byte;
+        }
+
+        String::from_utf8(vec_str)
+    }
+}
 
 pub type RedisModuleCmdFunc = extern "C" fn(ctx: *mut RedisModuleCtx,
                                             argv: *mut *mut RedisModuleString,
