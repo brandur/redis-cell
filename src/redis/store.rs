@@ -20,13 +20,13 @@ impl<'a> store::Store for RedisStore<'a> {
                                  new: i64,
                                  ttl: time::Tm)
                                  -> Result<bool, store::StoreError> {
-        Result::Err(store::StoreError::new("not implemented"))
+        Err(store::StoreError::new("not implemented"))
     }
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), store::StoreError> {
         // TODO: currently leveraging that CommandError and StoreError are the
         // same thing, but we should probably reconcile this.
-        let val = try!(self.r.get(key));
+        let val = try!(self.r.get_integer(key));
         Ok((val, time::now()))
     }
 
@@ -35,6 +35,6 @@ impl<'a> store::Store for RedisStore<'a> {
                                   value: i64,
                                   ttl: time::Tm)
                                   -> Result<bool, store::StoreError> {
-        Result::Err(store::StoreError::new("not implemented"))
+        Err(store::StoreError::new("not implemented"))
     }
 }

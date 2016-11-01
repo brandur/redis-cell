@@ -25,13 +25,21 @@ pub struct Redis {
 }
 
 impl Redis {
-    fn get(&self, key: &str) -> Result<i64, CommandError> {
+    fn get_integer(&self, key: &str) -> Result<i64, CommandError> {
         let reply =
             raw::RedisModule_Call(self.ctx, "GET\0".as_ptr(), &[format!("{}\0", key).as_ptr()]);
-        // TODO: check call type
-        let val = raw::RedisModule_CallReplyInteger(reply);
+        let ret = match raw::RedisModule_CallReplyType(reply) {
+            raw::ReplyType::Integer => Ok(raw::RedisModule_CallReplyInteger(reply) as i64),
+            raw::ReplyType::Null => Ok(-1),
+            _ => {
+                Err(CommandError::new(format!("Key {:?} is not a type we can handle ({:?}).",
+                                              key,
+                                              reply)
+                    .as_str()))
+            }
+        };
         raw::RedisModule_FreeCallReply(reply);
-        Ok(val as i64)
+        ret
     }
 }
 

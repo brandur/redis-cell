@@ -9,12 +9,25 @@ use std::string;
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
+#[derive(Debug)]
 #[derive(PartialEq)]
 pub enum KeyMode {
     Read = (1 << 0),
     Write = (1 << 1),
 }
 
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum ReplyType {
+    Unknown = -1,
+    String = 0,
+    Error = 1,
+    Integer = 2,
+    Array = 3,
+    Null = 4,
+}
+
+#[derive(Debug)]
 #[derive(PartialEq)]
 pub enum Status {
     Ok = 0,
@@ -73,6 +86,9 @@ extern "C" {
                                                cmdname: *const u8,
                                                fmts: &[*const u8])
                                                -> *mut RedisModuleCallReply;
+
+    pub static RedisModule_CallReplyType: extern "C" fn(reply: *mut RedisModuleCallReply)
+                                                        -> ReplyType;
 
     pub static RedisModule_FreeCallReply: extern "C" fn(reply: *mut RedisModuleCallReply);
 
