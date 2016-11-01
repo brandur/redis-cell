@@ -1,25 +1,15 @@
 extern crate time;
 
+use redis;
 use throttle::store;
 
 pub struct RedisStore<'a> {
-    db: i64,
-    prefix: &'a str,
+    r: &'a redis::Redis,
 }
 
 impl<'a> RedisStore<'a> {
-    pub fn new(db: i64) -> RedisStore<'a> {
-        RedisStore {
-            prefix: "",
-            db: db,
-        }
-    }
-
-    pub fn new_with_prefix(prefix: &str, db: i64) -> RedisStore {
-        RedisStore {
-            prefix: prefix,
-            db: db,
-        }
+    pub fn new(r: &'a redis::Redis) -> RedisStore<'a> {
+        RedisStore { r: r }
     }
 }
 
