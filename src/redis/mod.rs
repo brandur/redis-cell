@@ -7,9 +7,10 @@ pub mod ffi;
 pub mod store;
 
 pub trait Command {
-    fn name(&self) -> &'static str;
     fn run(&self, r: Redis, args: Vec<&str>);
 }
+
+impl Command {}
 
 pub struct Redis {
 }
