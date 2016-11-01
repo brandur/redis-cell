@@ -15,6 +15,7 @@ pub trait Command {
 impl Command {}
 
 pub struct Redis {
+    ctx: *mut raw::RedisModuleCtx,
 }
 
 impl Redis {}
@@ -28,7 +29,7 @@ pub fn harness_command(command: &Command,
                        argv: *mut *mut raw::RedisModuleString,
                        argc: libc::c_int) {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
-    let r = Redis {};
+    let r = Redis { ctx: ctx };
     for i in 0..argc {
         let redis_str: *mut raw::RedisModuleString = unsafe { *argv.offset(i as isize) };
         let mut length: libc::size_t = 0;
@@ -43,4 +44,6 @@ pub fn harness_command(command: &Command,
         let rust_str = String::from_utf8(vec_str).unwrap();
         args.push(rust_str);
     }
+
+    command.run(r, args.iter().map(|s| s.as_str()).collect());
 }
