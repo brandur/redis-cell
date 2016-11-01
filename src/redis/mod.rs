@@ -24,10 +24,15 @@ pub struct Redis {
     ctx: *mut raw::RedisModuleCtx,
 }
 
-impl Redis {}
-
-fn get(key: &str) {
-    // raw::RedisModule_Call(
+impl Redis {
+    fn get(&self, key: &str) -> Result<i64, CommandError> {
+        let reply =
+            raw::RedisModule_Call(self.ctx, "GET\0".as_ptr(), &[format!("{}\0", key).as_ptr()]);
+        // TODO: check call type
+        let val = raw::RedisModule_CallReplyInteger(reply);
+        raw::RedisModule_FreeCallReply(reply);
+        Ok(val as i64)
+    }
 }
 
 pub fn harness_command(command: &Command,
