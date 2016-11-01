@@ -7,6 +7,7 @@ pub mod raw;
 pub mod store;
 
 use libc;
+use std::string;
 
 pub trait Command {
     fn run(&self, r: Redis, args: Vec<&str>);
@@ -29,15 +30,20 @@ pub fn harness_command(command: &Command,
                        argv: *mut *mut raw::RedisModuleString,
                        argc: libc::c_int) {
     let r = Redis { ctx: ctx };
-    let args = parse_args(argv, argc);
+    let args = parse_args(argv, argc).unwrap();
     command.run(r, args.iter().map(|s| s.as_str()).collect());
 }
 
-pub fn parse_args(argv: *mut *mut raw::RedisModuleString, argc: libc::c_int) -> Vec<String> {
+pub fn parse_args(argv: *mut *mut raw::RedisModuleString,
+                  argc: libc::c_int)
+                  -> Result<Vec<String>, string::FromUtf8Error> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str: &mut raw::RedisModuleString = unsafe { &mut *(*argv.offset(i as isize)) };
-        args.push(redis_str.as_string().unwrap());
+        match redis_str.as_string() {
+            Ok(rust_str) => args.push(rust_str),
+            Err(err) => return Err(err),
+        }
     }
-    args
+    Ok(args)
 }
