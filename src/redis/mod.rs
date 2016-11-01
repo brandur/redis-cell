@@ -10,9 +10,9 @@ use libc;
 use std::string;
 use throttle::store::StoreError;
 
-pub type CommandError<'a> = StoreError<'a>;
+pub type CommandError = StoreError;
 
-pub type CommandResult<'a> = Result<bool, CommandError<'a>>;
+pub type CommandResult = Result<bool, CommandError>;
 
 pub trait Command {
     fn run(&self, r: Redis, args: Vec<&str>) -> CommandResult;

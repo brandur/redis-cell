@@ -5,7 +5,6 @@ pub mod throttle;
 
 use libc::c_int;
 use redis::raw::*;
-use std::error;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;

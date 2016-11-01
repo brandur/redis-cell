@@ -21,25 +21,25 @@ pub trait Store {
 }
 
 #[derive(Debug)]
-pub struct StoreError<'a> {
-    message: &'a str,
+pub struct StoreError {
+    message: String,
 }
 
-impl<'a> StoreError<'a> {
+impl StoreError {
     pub fn new(message: &str) -> StoreError {
-        StoreError { message: message }
+        StoreError { message: String::from(message) }
     }
 }
 
-impl<'a> fmt::Display for StoreError<'a> {
+impl<'a> fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Store error: {}", self.message)
     }
 }
 
-impl<'a> error::Error for StoreError<'a> {
+impl<'a> error::Error for StoreError {
     fn description(&self) -> &str {
-        self.message
+        self.message.as_str()
     }
 
     fn cause(&self) -> Option<&error::Error> {
