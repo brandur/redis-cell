@@ -4,7 +4,6 @@ mod redis;
 pub mod throttle;
 
 use libc::c_int;
-use redis::Command;
 use redis::raw::*;
 
 const MODULE_NAME: &'static str = "redis-throttle";
