@@ -35,7 +35,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut *mut RedisModuleString,
                                         argc: c_int)
                                         -> Status {
-    // redis::harness_command(&ThrottleCommand {}, ctx, argv, argc);
+    redis::harness_command(&ThrottleCommand {}, ctx, argv, argc);
 
     let key = "throttle";
     let keyStr = RedisModule_CreateString(ctx, format!("{}\0", key).as_ptr(), key.len());
@@ -67,9 +67,9 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
         }
 
         if RedisModule_CreateCommand(ctx,
-                                     c_str_pointer(ThrottleCommand::name()),
+                                     format!("{}\0", ThrottleCommand::name()).as_ptr(),
                                      Some(Throttle_RedisCommand),
-                                     c_str_pointer(ThrottleCommand::str_flags()),
+                                     format!("{}\0", ThrottleCommand::str_flags()).as_ptr(),
                                      0,
                                      0,
                                      0) == Status::Err {
@@ -79,10 +79,6 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
     }
 
     return Status::Ok;
-}
-
-fn c_str_pointer(s: &str) -> *const u8 {
-    format!("{}\0", s).as_ptr()
 }
 
 #[cfg(test)]

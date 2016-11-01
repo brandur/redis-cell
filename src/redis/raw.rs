@@ -45,7 +45,7 @@ impl RedisModuleString {
         let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
         for j in 0..length {
             let byte: u8 = unsafe { *byte_str.offset(j as isize) };
-            vec_str[j] = byte;
+            vec_str.insert(j, byte);
         }
 
         String::from_utf8(vec_str)
