@@ -40,10 +40,7 @@ pub fn parse_args(argv: *mut *mut raw::RedisModuleString,
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str: &mut raw::RedisModuleString = unsafe { &mut *(*argv.offset(i as isize)) };
-        match redis_str.as_string() {
-            Ok(rust_str) => args.push(rust_str),
-            Err(err) => return Err(err),
-        }
+        args.push(try!(redis_str.as_string()));
     }
     Ok(args)
 }
