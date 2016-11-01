@@ -12,8 +12,10 @@ use throttle::store::StoreError;
 
 pub type CommandError<'a> = StoreError<'a>;
 
+pub type CommandResult<'a> = Result<bool, CommandError<'a>>;
+
 pub trait Command {
-    fn run(&self, r: Redis, args: Vec<&str>) -> Result<bool, CommandError>;
+    fn run(&self, r: Redis, args: Vec<&str>) -> CommandResult;
 }
 
 impl Command {}
@@ -32,7 +34,7 @@ pub fn harness_command(command: &Command,
                        ctx: *mut raw::RedisModuleCtx,
                        argv: *mut *mut raw::RedisModuleString,
                        argc: libc::c_int)
-                       -> Result<bool, CommandError> {
+                       -> CommandResult {
     let r = Redis { ctx: ctx };
     let args = parse_args(argv, argc).unwrap();
     command.run(r, args.iter().map(|s| s.as_str()).collect())
