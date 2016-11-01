@@ -5,7 +5,7 @@ pub mod throttle;
 
 use libc::c_int;
 use redis::Command;
-use redis::ffi::*;
+use redis::raw::*;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
@@ -31,7 +31,7 @@ impl redis::Command for ThrottleCommand {
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
-                                        argv: *mut RedisModuleString,
+                                        argv: *mut *mut RedisModuleString,
                                         argc: c_int)
                                         -> Status {
     let key = "throttle";

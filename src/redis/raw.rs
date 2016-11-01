@@ -37,7 +37,7 @@ pub struct RedisModuleKey;
 pub struct RedisModuleString;
 
 pub type RedisModuleCmdFunc = extern "C" fn(ctx: *mut RedisModuleCtx,
-                                            argv: *mut RedisModuleString,
+                                            argv: *mut *mut RedisModuleString,
                                             argc: c_int)
                                             -> Status;
 
@@ -93,6 +93,10 @@ extern "C" {
     pub static RedisModule_ReplyWithString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                           str: *mut RedisModuleString)
                                                           -> Status;
+
+    pub static RedisModule_StringPtrLen: extern "C" fn(str: *mut RedisModuleString,
+                                                       len: *mut size_t)
+                                                       -> *const u8;
 
     pub static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
                                                     str: *mut RedisModuleString)
