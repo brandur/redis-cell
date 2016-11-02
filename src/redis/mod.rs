@@ -10,7 +10,7 @@ use error::ThrottleError;
 use libc::{c_int, c_longlong, size_t};
 
 pub trait Command {
-    fn run(&self, r: Redis, args: Vec<&str>) -> CommandResult;
+    fn run(&self, r: Redis, args: &[&str]) -> CommandResult;
 }
 
 impl Command {}
@@ -110,7 +110,8 @@ pub fn harness_command(command: &Command,
                        -> CommandResult {
     let r = Redis { ctx: ctx };
     let args = parse_args(argv, argc).unwrap();
-    command.run(r, args.iter().map(|s| s.as_str()).collect())
+    let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    command.run(r, str_args.as_slice())
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {

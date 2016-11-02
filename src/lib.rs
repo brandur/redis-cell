@@ -24,7 +24,7 @@ impl ThrottleCommand {
 }
 
 impl redis::Command for ThrottleCommand {
-    fn run(&self, r: redis::Redis, args: Vec<&str>) -> redis::CommandResult {
+    fn run(&self, r: redis::Redis, args: &[&str]) -> redis::CommandResult {
         println!("arguments = {:?}", args);
         Ok(true)
     }
