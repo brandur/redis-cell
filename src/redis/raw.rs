@@ -38,20 +38,6 @@ pub enum Status {
 #[repr(C)]
 pub struct RedisModuleCallReply;
 
-impl RedisModuleCallReply {
-    /// Gets a command reply value as a string.
-    pub fn as_string(&mut self) -> Result<String, ThrottleError> {
-        match RedisModule_CallReplyType(self) {
-            ReplyType::String => {
-                let mut length: size_t = 0;
-                let bytes = RedisModule_CallReplyStringPtr(self, &mut length);
-                from_byte_string(bytes, length)
-            }
-            _ => Err(ThrottleError::generic("Redis reply was not a string.")),
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RedisModuleCtx;
@@ -63,14 +49,6 @@ pub struct RedisModuleKey;
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RedisModuleString;
-
-impl RedisModuleString {
-    pub fn as_string(&mut self) -> Result<String, ThrottleError> {
-        let mut length: size_t = 0;
-        let bytes = RedisModule_StringPtrLen(self, &mut length);
-        from_byte_string(bytes, length)
-    }
-}
 
 pub type RedisModuleCmdFunc = extern "C" fn(ctx: *mut RedisModuleCtx,
                                             argv: *mut *mut RedisModuleString,
@@ -144,17 +122,4 @@ extern "C" {
     pub static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
                                                     str: *mut RedisModuleString)
                                                     -> Status;
-}
-
-fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, ThrottleError> {
-    let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
-    for j in 0..length {
-        let byte: u8 = unsafe { *byte_str.offset(j as isize) };
-        vec_str.insert(j, byte);
-    }
-
-    match String::from_utf8(vec_str) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(ThrottleError::String(e)),
-    }
 }
