@@ -9,7 +9,6 @@ pub mod store;
 
 use error::{GenericError, ThrottleError};
 use libc;
-use std::string;
 
 pub trait Command {
     fn run(&self, r: Redis, args: Vec<&str>) -> CommandResult;
@@ -122,7 +121,7 @@ pub fn harness_command(command: &Command,
 
 pub fn parse_args(argv: *mut *mut raw::RedisModuleString,
                   argc: libc::c_int)
-                  -> Result<Vec<String>, string::FromUtf8Error> {
+                  -> Result<Vec<String>, ThrottleError> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str: &mut raw::RedisModuleString = unsafe { &mut *(*argv.offset(i as isize)) };

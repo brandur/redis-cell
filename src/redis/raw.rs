@@ -4,7 +4,6 @@ extern crate libc;
 
 use error::{GenericError, ThrottleError};
 use libc::{c_int, c_longlong, size_t};
-use std::string;
 
 // Rust can't link against C macros (#define) so we just redefine them here.
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
