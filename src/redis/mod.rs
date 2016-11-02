@@ -25,7 +25,7 @@ pub enum Reply {
     Array,
     Error,
     Integer(i64),
-    Null,
+    Nil,
     String(String),
     Unknown,
 }
@@ -116,7 +116,7 @@ pub fn harness_command(command: &Command,
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
     match raw::RedisModule_CallReplyType(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::RedisModule_CallReplyInteger(reply))),
-        raw::ReplyType::Null => Ok(Reply::Null),
+        raw::ReplyType::Nil => Ok(Reply::Nil),
         raw::ReplyType::String => {
             let mut length: size_t = 0;
             let bytes = raw::RedisModule_CallReplyStringPtr(reply, &mut length);

@@ -24,7 +24,7 @@ pub enum ReplyType {
     Error = 1,
     Integer = 2,
     Array = 3,
-    Null = 4,
+    Nil = 4,
 }
 
 #[derive(Debug)]
