@@ -21,7 +21,27 @@ impl<'a> store::Store for RedisStore<'a> {
                                  new: i64,
                                  ttl: i64)
                                  -> Result<bool, ThrottleError> {
-        Err(ThrottleError::generic("not implemented"))
+        let val = try!(self.r.get(key));
+        match val {
+            // Key did not exist.
+            redis::Reply::Nil => Ok(false),
+
+            // Still the old value.
+            redis::Reply::Integer(n) if n == old => Ok(false),
+
+            // Not the old value: perform the swap.
+            redis::Reply::Integer(_) => {
+                if ttl > 0 {
+                    self.r.setex(key, ttl, new.to_string().as_str());
+                } else {
+                    self.r.set(key, new.to_string().as_str());
+                }
+
+                Ok(true)
+            }
+
+            _ => Err(ThrottleError::generic("GET returned non-string non-nil value.")),
+        }
     }
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
