@@ -51,12 +51,12 @@ impl Redis {
         self.call("GET", &[key])
     }
 
-    fn set(&self, key: &str, val: &str) -> Result<String, ThrottleError> {
+    fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
         parse_simple_string(res)
     }
 
-    fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<String, ThrottleError> {
+    fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
         parse_simple_string(res)
     }
@@ -135,27 +135,17 @@ fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, Throt
 
 fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
     match reply {
-        Reply::Integer(n) => {
-            match n {
-                0 => Ok(false),
-                1 => Ok(true),
-                _ => Err(ThrottleError::generic("Command returned non-boolean value.")),
-            }
-        }
-        _ => Err(ThrottleError::generic("Command returned non-integer value.")),
+        Reply::Integer(n) if n == 0 => Ok(false),
+        Reply::Integer(n) if n == 1 => Ok(false),
+        _ => Err(ThrottleError::generic("Command returned non-boolean value.")),
     }
 }
 
-fn parse_simple_string(reply: Reply) -> Result<String, ThrottleError> {
+fn parse_simple_string(reply: Reply) -> Result<bool, ThrottleError> {
     match reply {
         // may also return a Redis null, but not with the parameters that
         // we currently allow
-        Reply::String(s) => {
-            match s.as_str() {
-                "OK" => Ok(s),
-                _ => Err(ThrottleError::generic("Command returned non-simple string value.")),
-            }
-        }
-        _ => Err(ThrottleError::generic("Command returned non-string value.")),
+        Reply::String(ref s) if s.as_str() == "OK" => Ok(true),
+        _ => Err(ThrottleError::generic("Command returned non-simple string value.")),
     }
 }
