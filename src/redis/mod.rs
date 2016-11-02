@@ -44,62 +44,26 @@ impl Redis {
 
     fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
         let res = try!(self.call("EXPIRE", &[key, ttl.to_string().as_str()]));
-        match res {
-            Reply::Integer(n) => {
-                match n {
-                    0 => Ok(false),
-                    1 => Ok(true),
-                    _ => Err(ThrottleError::generic("EXPIRE returned non-boolean value.")),
-                }
-            }
-            _ => Err(ThrottleError::generic("EXPIRE returned non-integer value.")),
-        }
+        parse_bool(res)
     }
 
     fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
         self.call("GET", &[key])
     }
 
-    fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
+    fn set(&self, key: &str, val: &str) -> Result<String, ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
-        match res {
-            // may also return a Redis null, but not with the parameters that
-            // we currently allow
-            Reply::String(s) => {
-                match s.as_str() {
-                    "OK" => Ok(true),
-                    _ => Err(ThrottleError::generic("SET returned non-simple string value.")),
-                }
-            }
-            _ => Err(ThrottleError::generic("SET returned non-string value.")),
-        }
+        parse_simple_string(res)
     }
 
-    fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
+    fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<String, ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
-        match res {
-            Reply::String(s) => {
-                match s.as_str() {
-                    "OK" => Ok(true),
-                    _ => Err(ThrottleError::generic("SETEX returned non-simple string value.")),
-                }
-            }
-            _ => Err(ThrottleError::generic("SETEX returned non-string value.")),
-        }
+        parse_simple_string(res)
     }
 
     fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SETNX", &[key, val]));
-        match res {
-            Reply::Integer(n) => {
-                match n {
-                    0 => Ok(false),
-                    1 => Ok(true),
-                    _ => Err(ThrottleError::generic("SETNX returned non-boolean value.")),
-                }
-            }
-            _ => Err(ThrottleError::generic("SETNX returned non-integer value.")),
-        }
+        parse_bool(res)
     }
 }
 
@@ -166,5 +130,32 @@ fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, Throt
     match String::from_utf8(vec_str) {
         Ok(s) => Ok(s),
         Err(e) => Err(ThrottleError::String(e)),
+    }
+}
+
+fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
+    match reply {
+        Reply::Integer(n) => {
+            match n {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(ThrottleError::generic("Command returned non-boolean value.")),
+            }
+        }
+        _ => Err(ThrottleError::generic("Command returned non-integer value.")),
+    }
+}
+
+fn parse_simple_string(reply: Reply) -> Result<String, ThrottleError> {
+    match reply {
+        // may also return a Redis null, but not with the parameters that
+        // we currently allow
+        Reply::String(s) => {
+            match s.as_str() {
+                "OK" => Ok(s),
+                _ => Err(ThrottleError::generic("Command returned non-simple string value.")),
+            }
+        }
+        _ => Err(ThrottleError::generic("Command returned non-string value.")),
     }
 }
