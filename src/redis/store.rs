@@ -27,8 +27,11 @@ impl<'a> store::Store for RedisStore<'a> {
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
         // TODO: currently leveraging that CommandError and ThrottleError are the
         // same thing, but we should probably reconcile this.
-        let val = try!(self.r.get_integer(key));
-        Ok((val, time::now()))
+        let val = try!(self.r.get(key));
+        match val {
+            redis::Reply::Integer(n) => Ok((n, time::now())),
+            _ => Err(ThrottleError::generic(format!("Found non-integer in key: {}", key).as_str())),
+        }
     }
 
     fn set_if_not_exists_with_ttl(&self,

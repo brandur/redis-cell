@@ -21,91 +21,85 @@ pub struct Redis {
     ctx: *mut raw::RedisModuleCtx,
 }
 
+pub enum Reply {
+    Array,
+    Error,
+    Integer(i64),
+    Null,
+    String(String),
+    Unknown,
+}
+
 impl Redis {
+    fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
+        let terminated_command = format!("{}\0", command).as_ptr();
+        let terminated_args: Vec<*const u8> =
+            args.iter().map(|a| format!("{}\0", a).as_ptr()).collect();
+        let raw_reply =
+            raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_slice());
+        let reply = manifest_redis_reply(raw_reply);
+        raw::RedisModule_FreeCallReply(raw_reply);
+        reply
+    }
+
     fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
-        let reply = raw::RedisModule_Call(self.ctx,
-                                          "EXPIRE\0".as_ptr(),
-                                          &[format!("{}\0", key).as_ptr(),
-                                            format!("{}\0", ttl).as_ptr()]);
-        let ret = match raw::RedisModule_CallReplyType(reply) {
-            raw::ReplyType::Integer => {
-                match raw::RedisModule_CallReplyInteger(reply) {
+        let res = try!(self.call("EXPIRE", &[key, ttl.to_string().as_str()]));
+        match res {
+            Reply::Integer(n) => {
+                match n {
                     0 => Ok(false),
                     1 => Ok(true),
                     _ => Err(ThrottleError::generic("EXPIRE returned non-boolean value.")),
                 }
             }
             _ => Err(ThrottleError::generic("EXPIRE returned non-integer value.")),
-        };
-        raw::RedisModule_FreeCallReply(reply);
-        ret
+        }
     }
 
-    fn get_integer(&self, key: &str) -> Result<i64, ThrottleError> {
-        let reply =
-            raw::RedisModule_Call(self.ctx, "GET\0".as_ptr(), &[format!("{}\0", key).as_ptr()]);
-        let ret = match raw::RedisModule_CallReplyType(reply) {
-            raw::ReplyType::Integer => Ok(raw::RedisModule_CallReplyInteger(reply) as i64),
-            raw::ReplyType::Null => Ok(-1),
-            _ => {
-                Err(ThrottleError::generic(format!("Key {:?} is not a type we can handle ({:?}).",
-                                                   key,
-                                                   reply)
-                    .as_str()))
-            }
-        };
-        raw::RedisModule_FreeCallReply(reply);
-        ret
+    fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
+        self.call("GET", &[key])
     }
 
     fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
-        let reply = raw::RedisModule_Call(self.ctx,
-                                          "SET\0".as_ptr(),
-                                          &[format!("{}\0", key).as_ptr(),
-                                            format!("{}\0", val).as_ptr()]);
-        let res = try!(manifest_redis_reply(reply));
-        let ret = match res.as_str() {
+        let res = try!(self.call("SET", &[key, val]));
+        match res {
             // may also return a Redis null, but not with the parameters that
             // we currently allow
-            "OK" => Ok(true),
-            _ => Err(ThrottleError::generic("SET returned non-simple string value.")),
-        };
-        raw::RedisModule_FreeCallReply(reply);
-        ret
+            Reply::String(s) => {
+                match s.as_str() {
+                    "OK" => Ok(true),
+                    _ => Err(ThrottleError::generic("SET returned non-simple string value.")),
+                }
+            }
+            _ => Err(ThrottleError::generic("SET returned non-string value.")),
+        }
     }
 
     fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
-        let reply = raw::RedisModule_Call(self.ctx,
-                                          "SETEX\0".as_ptr(),
-                                          &[format!("{}\0", key).as_ptr(),
-                                            format!("{}\0", ttl).as_ptr(),
-                                            format!("{}\0", val).as_ptr()]);
-        let res = try!(manifest_redis_reply(reply));
-        let ret = match res.as_str() {
-            "OK" => Ok(true),
-            _ => Err(ThrottleError::generic("SETEX returned non-simple string value.")),
-        };
-        raw::RedisModule_FreeCallReply(reply);
-        ret
+        let res = try!(self.call("SET", &[key, val]));
+        match res {
+            Reply::String(s) => {
+                match s.as_str() {
+                    "OK" => Ok(true),
+                    _ => Err(ThrottleError::generic("SETEX returned non-simple string value.")),
+                }
+            }
+            _ => Err(ThrottleError::generic("SETEX returned non-string value.")),
+        }
     }
 
     fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
-        let reply = raw::RedisModule_Call(self.ctx,
-                                          "SETNX\0".as_ptr(),
-                                          &[format!("{}\0", key).as_ptr(),
-                                            format!("{}\0", val).as_ptr()]);
-        let ret = match raw::RedisModule_CallReplyType(reply) {
-            raw::ReplyType::Integer => {
-                match raw::RedisModule_CallReplyInteger(reply) {
+        let res = try!(self.call("SETNX", &[key, val]));
+        match res {
+            Reply::Integer(n) => {
+                match n {
                     0 => Ok(false),
                     1 => Ok(true),
                     _ => Err(ThrottleError::generic("SETNX returned non-boolean value.")),
                 }
             }
             _ => Err(ThrottleError::generic("SETNX returned non-integer value.")),
-        };
-        raw::RedisModule_FreeCallReply(reply);
-        ret
+        }
     }
 }
 
@@ -119,14 +113,28 @@ pub fn harness_command(command: &Command,
     command.run(r, args.iter().map(|s| s.as_str()).collect())
 }
 
-fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<String, ThrottleError> {
+fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
     match raw::RedisModule_CallReplyType(reply) {
+        raw::ReplyType::Integer => Ok(Reply::Integer(raw::RedisModule_CallReplyInteger(reply))),
+        raw::ReplyType::Null => Ok(Reply::Null),
         raw::ReplyType::String => {
             let mut length: size_t = 0;
             let bytes = raw::RedisModule_CallReplyStringPtr(reply, &mut length);
-            from_byte_string(bytes, length)
+            match from_byte_string(bytes, length) {
+                Ok(s) => Ok(Reply::String(s)),
+                Err(e) => Err(e),
+            }
         }
-        _ => Err(ThrottleError::generic("Redis reply was not a string.")),
+        raw::ReplyType::Unknown => Ok(Reply::Unknown),
+
+        // TODO: I need to actually extract the error from Redis here. Also, it
+        // should probably be its own non-generic variety of ThrottleError.
+        raw::ReplyType::Error => Err(ThrottleError::generic("Redis replied with an error.")),
+
+        other => {
+            Err(ThrottleError::generic(format!("Don't yet handle Redis type: {:?}", other)
+                .as_str()))
+        }
     }
 }
 
