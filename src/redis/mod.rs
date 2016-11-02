@@ -57,7 +57,7 @@ impl Redis {
     }
 
     fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
-        let res = try!(self.call("SET", &[key, val]));
+        let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
         parse_simple_string(res)
     }
 
