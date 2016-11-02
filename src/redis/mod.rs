@@ -4,7 +4,6 @@
 // instead.
 pub mod raw;
 
-pub mod error;
 pub mod store;
 
 use error::{GenericError, ThrottleError};
