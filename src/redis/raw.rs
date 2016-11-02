@@ -2,7 +2,7 @@
 
 extern crate libc;
 
-use error::{GenericError, ThrottleError};
+use error::ThrottleError;
 use libc::{c_int, c_longlong, size_t};
 
 // Rust can't link against C macros (#define) so we just redefine them here.
@@ -47,7 +47,7 @@ impl RedisModuleCallReply {
                 let bytes = RedisModule_CallReplyStringPtr(self, &mut length);
                 from_byte_string(bytes, length)
             }
-            _ => Err(ThrottleError::Generic(GenericError::new("Redis reply was not a string."))),
+            _ => Err(ThrottleError::generic("Redis reply was not a string.")),
         }
     }
 }

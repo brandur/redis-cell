@@ -6,7 +6,7 @@ pub mod raw;
 
 pub mod store;
 
-use error::{GenericError, ThrottleError};
+use error::ThrottleError;
 use libc;
 
 pub trait Command {
@@ -32,15 +32,10 @@ impl Redis {
                 match raw::RedisModule_CallReplyInteger(reply) {
                     0 => Ok(false),
                     1 => Ok(true),
-                    _ => {
-                        Err(ThrottleError::Generic(GenericError::new("EXPIRE returned \
-                                                                      non-boolean value.")))
-                    }
+                    _ => Err(ThrottleError::generic("EXPIRE returned non-boolean value.")),
                 }
             }
-            _ => {
-                Err(ThrottleError::Generic(GenericError::new("EXPIRE returned non-integer value.")))
-            }
+            _ => Err(ThrottleError::generic("EXPIRE returned non-integer value.")),
         };
         raw::RedisModule_FreeCallReply(reply);
         ret
@@ -53,11 +48,10 @@ impl Redis {
             raw::ReplyType::Integer => Ok(raw::RedisModule_CallReplyInteger(reply) as i64),
             raw::ReplyType::Null => Ok(-1),
             _ => {
-                Err(ThrottleError::Generic(GenericError::new(format!("Key {:?} is not a type \
-                                                                      we can handle ({:?}).",
-                                                                     key,
-                                                                     reply)
-                    .as_str())))
+                Err(ThrottleError::generic(format!("Key {:?} is not a type we can handle ({:?}).",
+                                                   key,
+                                                   reply)
+                    .as_str()))
             }
         };
         raw::RedisModule_FreeCallReply(reply);
@@ -74,10 +68,7 @@ impl Redis {
         let res = try!(reply_ref.as_string());
         let ret = match res.as_str() {
             "OK" => Ok(true),
-            _ => {
-                Err(ThrottleError::Generic(GenericError::new("SETEX returned non-simple string \
-                                                              value.")))
-            }
+            _ => Err(ThrottleError::generic("SETEX returned non-simple string value.")),
         };
         raw::RedisModule_FreeCallReply(reply);
         ret
@@ -93,15 +84,10 @@ impl Redis {
                 match raw::RedisModule_CallReplyInteger(reply) {
                     0 => Ok(false),
                     1 => Ok(true),
-                    _ => {
-                        Err(ThrottleError::Generic(GenericError::new("SETNX returned \
-                                                                      non-boolean value.")))
-                    }
+                    _ => Err(ThrottleError::generic("SETNX returned non-boolean value.")),
                 }
             }
-            _ => {
-                Err(ThrottleError::Generic(GenericError::new("SETNX returned non-integer value.")))
-            }
+            _ => Err(ThrottleError::generic("SETNX returned non-integer value.")),
         };
         raw::RedisModule_FreeCallReply(reply);
         ret

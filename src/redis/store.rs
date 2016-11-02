@@ -1,6 +1,6 @@
 extern crate time;
 
-use error::{GenericError, ThrottleError};
+use error::ThrottleError;
 use redis;
 use throttle::store;
 
@@ -21,7 +21,7 @@ impl<'a> store::Store for RedisStore<'a> {
                                  new: i64,
                                  ttl: i64)
                                  -> Result<bool, ThrottleError> {
-        Err(ThrottleError::Generic(GenericError::new("not implemented")))
+        Err(ThrottleError::generic("not implemented"))
     }
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {

@@ -8,6 +8,12 @@ pub enum ThrottleError {
     String(string::FromUtf8Error),
 }
 
+impl ThrottleError {
+    pub fn generic(message: &str) -> ThrottleError {
+        ThrottleError::Generic(GenericError::new(message))
+    }
+}
+
 #[derive(Debug)]
 pub struct GenericError {
     message: String,
