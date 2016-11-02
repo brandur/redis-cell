@@ -2,6 +2,7 @@
 
 extern crate libc;
 
+use error::{GenericError, ThrottleError};
 use libc::{c_int, c_longlong, size_t};
 use std::string;
 
@@ -38,6 +39,20 @@ pub enum Status {
 #[repr(C)]
 pub struct RedisModuleCallReply;
 
+impl RedisModuleCallReply {
+    /// Gets a command reply value as a string.
+    pub fn as_string(&mut self) -> Result<String, ThrottleError> {
+        match RedisModule_CallReplyType(self) {
+            ReplyType::String => {
+                let mut length: size_t = 0;
+                let bytes = RedisModule_CallReplyStringPtr(self, &mut length);
+                from_byte_string(bytes, length)
+            }
+            _ => Err(ThrottleError::Generic(GenericError::new("Redis reply was not a string."))),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RedisModuleCtx;
@@ -51,17 +66,10 @@ pub struct RedisModuleKey;
 pub struct RedisModuleString;
 
 impl RedisModuleString {
-    pub fn as_string(&mut self) -> Result<String, string::FromUtf8Error> {
-        let mut length: libc::size_t = 0;
-        let byte_str = RedisModule_StringPtrLen(self, &mut length);
-
-        let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
-        for j in 0..length {
-            let byte: u8 = unsafe { *byte_str.offset(j as isize) };
-            vec_str.insert(j, byte);
-        }
-
-        String::from_utf8(vec_str)
+    pub fn as_string(&mut self) -> Result<String, ThrottleError> {
+        let mut length: size_t = 0;
+        let bytes = RedisModule_StringPtrLen(self, &mut length);
+        from_byte_string(bytes, length)
     }
 }
 
@@ -94,6 +102,10 @@ extern "C" {
 
     pub static RedisModule_CallReplyInteger: extern "C" fn(reply: *mut RedisModuleCallReply)
                                                            -> c_longlong;
+
+    pub static RedisModule_CallReplyStringPtr: extern "C" fn(str: *mut RedisModuleCallReply,
+                                                             len: *mut size_t)
+                                                             -> *const u8;
 
     pub static RedisModule_CloseKey: extern "C" fn(kp: *mut RedisModuleKey);
 
@@ -133,4 +145,17 @@ extern "C" {
     pub static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
                                                     str: *mut RedisModuleString)
                                                     -> Status;
+}
+
+fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, ThrottleError> {
+    let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
+    for j in 0..length {
+        let byte: u8 = unsafe { *byte_str.offset(j as isize) };
+        vec_str.insert(j, byte);
+    }
+
+    match String::from_utf8(vec_str) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(ThrottleError::String(e)),
+    }
 }

@@ -6,6 +6,8 @@ extern crate time;
 
 pub mod store;
 
+use error::ThrottleError;
+
 pub struct Rate {
     count: i64,
     period: time::Duration,
@@ -58,9 +60,7 @@ impl RateLimiter {
         }
     }
 
-    pub fn rate_limit(key: &str,
-                      quantity: i64)
-                      -> Result<(bool, RateLimitResult), store::StoreError> {
+    pub fn rate_limit(key: &str, quantity: i64) -> Result<(bool, RateLimitResult), ThrottleError> {
         Ok((false,
             RateLimitResult {
             limit: 0,

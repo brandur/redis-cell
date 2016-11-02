@@ -1,5 +1,6 @@
 extern crate libc;
 
+pub mod error;
 mod redis;
 pub mod throttle;
 
