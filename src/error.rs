@@ -14,6 +14,39 @@ impl ThrottleError {
     }
 }
 
+impl fmt::Display for ThrottleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            // Both underlying errors already impl `Display`, so we defer to
+            // their implementations.
+            ThrottleError::Generic(ref err) => write!(f, "{}", err),
+            ThrottleError::String(ref err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl error::Error for ThrottleError {
+    fn description(&self) -> &str {
+        // Both underlying errors already impl `Error`, so we defer to their
+        // implementations.
+        match *self {
+            ThrottleError::Generic(ref err) => err.description(),
+            ThrottleError::String(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            // N.B. Both of these implicitly cast `err` from their concrete
+            // types (either `&io::Error` or `&num::ParseIntError`)
+            // to a trait object `&Error`. This works because both error types
+            // implement `Error`.
+            ThrottleError::Generic(ref err) => Some(err),
+            ThrottleError::String(ref err) => Some(err),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct GenericError {
     message: String,

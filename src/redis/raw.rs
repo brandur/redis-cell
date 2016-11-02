@@ -107,6 +107,8 @@ extern "C" {
                                                   mode: KeyMode)
                                                   -> *mut RedisModuleKey;
 
+    pub static RedisModule_ReplyWithError: extern "C" fn(ctx: *mut RedisModuleCtx, err: *const u8);
+
     pub static RedisModule_ReplyWithLongLong: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                             ll: c_longlong)
                                                             -> Status;
