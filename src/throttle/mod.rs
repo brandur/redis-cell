@@ -9,8 +9,8 @@ pub mod store;
 use error::ThrottleError;
 
 pub struct Rate {
-    count: i64,
-    period: time::Duration,
+    pub count: i64,
+    pub period: time::Duration,
 }
 
 impl Rate {
@@ -47,20 +47,24 @@ pub struct RateLimitResult {
     pub retry_after: time::Duration,
 }
 
-pub struct RateLimiter {
-    quota: RateQuota,
-    store: *mut store::Store,
+pub struct RateLimiter<T: store::Store> {
+    pub quota: RateQuota,
+    pub store: T,
 }
 
-impl RateLimiter {
-    pub fn new(store: *mut store::Store, quota: RateQuota) -> RateLimiter {
+impl<T: store::Store> RateLimiter<T> {
+    pub fn new(store: T, quota: RateQuota) -> RateLimiter<T> {
         RateLimiter {
             quota: quota,
             store: store,
         }
     }
 
-    pub fn rate_limit(key: &str, quantity: i64) -> Result<(bool, RateLimitResult), ThrottleError> {
+    pub fn rate_limit(&self,
+                      key: &str,
+                      quantity: i64)
+                      -> Result<(bool, RateLimitResult), ThrottleError> {
+        println!("rate_limit: {} {}", key, quantity);
         Ok((false,
             RateLimitResult {
             limit: 0,
@@ -72,8 +76,8 @@ impl RateLimiter {
 }
 
 pub struct RateQuota {
-    max_burst: i64,
-    max_rate: Rate,
+    pub max_burst: i64,
+    pub max_rate: Rate,
 }
 
 fn div_durations(x: time::Duration, y: time::Duration) -> time::Duration {

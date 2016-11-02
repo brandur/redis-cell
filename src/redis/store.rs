@@ -32,9 +32,9 @@ impl<'a> store::Store for RedisStore<'a> {
             // Not the old value: perform the swap.
             redis::Reply::Integer(_) => {
                 if ttl > 0 {
-                    self.r.setex(key, ttl, new.to_string().as_str());
+                    try!(self.r.setex(key, ttl, new.to_string().as_str()));
                 } else {
-                    self.r.set(key, new.to_string().as_str());
+                    try!(self.r.set(key, new.to_string().as_str()));
                 }
 
                 Ok(true)

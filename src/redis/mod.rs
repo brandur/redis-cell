@@ -7,7 +7,7 @@ pub mod raw;
 pub mod store;
 
 use error::ThrottleError;
-use libc::{c_int, c_longlong, size_t};
+use libc::{c_int, size_t};
 use std::error::Error;
 
 pub trait Command {
@@ -50,6 +50,18 @@ impl Redis {
 
     fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
         self.call("GET", &[key])
+    }
+
+    pub fn reply_string(&self, message: &str) -> Result<bool, ThrottleError> {
+        let redis_str = raw::RedisModule_CreateString(self.ctx,
+                                                      format!("{}\0", message).as_ptr(),
+                                                      message.len());
+        let res = match raw::RedisModule_ReplyWithString(self.ctx, redis_str) {
+            raw::Status::Ok => Ok(true),
+            raw::Status::Err => Err(ThrottleError::generic("Could not reply with string")),
+        };
+        raw::RedisModule_FreeString(self.ctx, redis_str);
+        res
     }
 
     fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {

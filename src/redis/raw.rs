@@ -2,7 +2,6 @@
 
 extern crate libc;
 
-use error::ThrottleError;
 use libc::{c_int, c_longlong, size_t};
 
 // Rust can't link against C macros (#define) so we just redefine them here.
@@ -99,6 +98,9 @@ extern "C" {
                                                        ptr: *const u8,
                                                        len: size_t)
                                                        -> *mut RedisModuleString;
+
+    pub static RedisModule_FreeString: extern "C" fn(ctx: *mut RedisModuleCtx,
+                                                     str: *mut RedisModuleString);
 
     pub static RedisModule_GetSelectedDb: extern "C" fn(ctx: *mut RedisModuleCtx) -> c_int;
 
