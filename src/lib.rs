@@ -6,7 +6,6 @@ pub mod throttle;
 
 use libc::c_int;
 use redis::raw::*;
-use std::error::Error;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
@@ -39,14 +38,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
                                         argv: *mut *mut RedisModuleString,
                                         argc: c_int)
                                         -> Status {
-    match redis::harness_command(&ThrottleCommand {}, ctx, argv, argc) {
-        Ok(_) => Status::Ok,
-        Err(e) => {
-            RedisModule_ReplyWithError(ctx,
-                                       format!("Throttle error: {}\0", e.description()).as_ptr());
-            Status::Err
-        }
-    }
+    redis::harness_command(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]

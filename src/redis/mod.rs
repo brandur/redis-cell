@@ -8,6 +8,7 @@ pub mod store;
 
 use error::ThrottleError;
 use libc::{c_int, c_longlong, size_t};
+use std::error::Error;
 
 pub trait Command {
     fn run(&self, r: Redis, args: &[&str]) -> CommandResult;
@@ -71,11 +72,19 @@ pub fn harness_command(command: &Command,
                        ctx: *mut raw::RedisModuleCtx,
                        argv: *mut *mut raw::RedisModuleString,
                        argc: c_int)
-                       -> CommandResult {
+                       -> raw::Status {
     let r = Redis { ctx: ctx };
     let args = parse_args(argv, argc).unwrap();
     let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    command.run(r, str_args.as_slice())
+    match command.run(r, str_args.as_slice()) {
+        Ok(_) => raw::Status::Ok,
+        Err(e) => {
+            raw::RedisModule_ReplyWithError(ctx,
+                                            format!("Throttle error: {}\0", e.description())
+                                                .as_ptr());
+            raw::Status::Err
+        }
+    }
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
