@@ -63,8 +63,7 @@ impl Redis {
                                           "SET\0".as_ptr(),
                                           &[format!("{}\0", key).as_ptr(),
                                             format!("{}\0", val).as_ptr()]);
-        let reply_ref = unsafe { &mut *reply };
-        let res = try!(manifest_redis_reply(reply_ref));
+        let res = try!(manifest_redis_reply(reply));
         let ret = match res.as_str() {
             // may also return a Redis null, but not with the parameters that
             // we currently allow
@@ -81,8 +80,7 @@ impl Redis {
                                           &[format!("{}\0", key).as_ptr(),
                                             format!("{}\0", ttl).as_ptr(),
                                             format!("{}\0", val).as_ptr()]);
-        let reply_ref = unsafe { &mut *reply };
-        let res = try!(manifest_redis_reply(reply_ref));
+        let res = try!(manifest_redis_reply(reply));
         let ret = match res.as_str() {
             "OK" => Ok(true),
             _ => Err(ThrottleError::generic("SETEX returned non-simple string value.")),
@@ -121,8 +119,7 @@ pub fn harness_command(command: &Command,
     command.run(r, args.iter().map(|s| s.as_str()).collect())
 }
 
-pub fn manifest_redis_reply(reply: &mut raw::RedisModuleCallReply)
-                            -> Result<String, ThrottleError> {
+fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<String, ThrottleError> {
     match raw::RedisModule_CallReplyType(reply) {
         raw::ReplyType::String => {
             let mut length: size_t = 0;
@@ -133,8 +130,7 @@ pub fn manifest_redis_reply(reply: &mut raw::RedisModuleCallReply)
     }
 }
 
-pub fn manifest_redis_string(redis_str: &mut raw::RedisModuleString)
-                             -> Result<String, ThrottleError> {
+fn manifest_redis_string(redis_str: *mut raw::RedisModuleString) -> Result<String, ThrottleError> {
     let mut length: size_t = 0;
     let bytes = raw::RedisModule_StringPtrLen(redis_str, &mut length);
     from_byte_string(bytes, length)
@@ -145,7 +141,7 @@ pub fn parse_args(argv: *mut *mut raw::RedisModuleString,
                   -> Result<Vec<String>, ThrottleError> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
-        let redis_str: &mut raw::RedisModuleString = unsafe { &mut *(*argv.offset(i as isize)) };
+        let redis_str = unsafe { *argv.offset(i as isize) };
         args.push(try!(manifest_redis_string(redis_str)));
     }
     Ok(args)
