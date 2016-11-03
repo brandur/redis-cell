@@ -42,19 +42,32 @@ pub enum Reply {
 
 impl Redis {
     fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
+        // TODO: remove or change to debug.
+        self.log(LogLevel::Notice,
+                 format!("{} [start] args = {:?}", command, args).as_str());
+
         let terminated_command = format!("{}\0", command).as_ptr();
         let terminated_args: Vec<*const u8> =
             args.iter().map(|a| format!("{}\0", a).as_ptr()).collect();
         let raw_reply =
             raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_slice());
-        let reply = manifest_redis_reply(raw_reply);
+        let reply_res = manifest_redis_reply(raw_reply);
+
+        match reply_res {
+            Ok(ref reply) => {
+                self.log(LogLevel::Notice,
+                         format!("{} [end] result = {:?}", command, reply).as_str())
+            }
+            Err(_) => (),
+        }
+
         // TODO: PROBABLE MEMORY LEAK!!!!!
         //
         // This free needs to be here but currently seems to produce a segfault
         // in Redis: more debugging is required.
         //
         // raw::RedisModule_FreeCallReply(raw_reply);
-        reply
+        reply_res
     }
 
     fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
@@ -141,6 +154,11 @@ pub fn harness_command(command: &Command,
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
+    // TODO: remove
+    let x = raw::RedisModule_CallReplyType(reply);
+    let y = raw::RedisModule_CallReplyType(reply);
+    println!("reply type = {:?} ({:?})", x, (y as i64));
+
     match raw::RedisModule_CallReplyType(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::RedisModule_CallReplyInteger(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
@@ -197,9 +215,18 @@ fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, Throt
 
 fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
     match reply {
+        // EXPIRE and SETNX are supposed to return a boolean false in their
+        // failure case, but this seems to come back as an "unknown" instead so
+        // handle that as well.
+        Reply::Unknown => Ok(false),
         Reply::Integer(n) if n == 0 => Ok(false),
-        Reply::Integer(n) if n == 1 => Ok(false),
-        _ => Err(ThrottleError::generic("Command returned non-boolean value.")),
+        Reply::Integer(n) if n == 1 => Ok(true),
+        r => {
+            Err(ThrottleError::generic(format!("Command returned non-boolean value (type was \
+                                                {:?}).",
+                                               r)
+                .as_str()))
+        }
     }
 }
 
@@ -208,6 +235,11 @@ fn parse_simple_string(reply: Reply) -> Result<bool, ThrottleError> {
         // may also return a Redis null, but not with the parameters that
         // we currently allow
         Reply::String(ref s) if s.as_str() == "OK" => Ok(true),
-        _ => Err(ThrottleError::generic("Command returned non-simple string value.")),
+        r => {
+            Err(ThrottleError::generic(format!("Command returned non-string value (type was \
+                                                {:?}).",
+                                               r)
+                .as_str()))
+        }
     }
 }

@@ -53,8 +53,8 @@ impl<'a> store::Store for RedisStore<'a> {
         match val {
             // Key did not exist. The docs say that this should be a Redis nil,
             // but it apparently comes back as an unknown; just handle both.
-            redis::Reply::Nil => Ok((0, time::now())),
-            redis::Reply::Unknown => Ok((0, time::now())),
+            redis::Reply::Nil => Ok((-1, time::now())),
+            redis::Reply::Unknown => Ok((-1, time::now())),
 
             redis::Reply::Integer(n) => Ok((n, time::now())),
 

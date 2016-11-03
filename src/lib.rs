@@ -54,13 +54,14 @@ impl redis::Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let store = RedisStore::new(&r);
+        let rate = throttle::Rate {
+            period:
+                time::Duration::milliseconds(((period as f64) / (count as f64) * 1000.0) as i64),
+        };
         let limiter = throttle::RateLimiter::new(store,
                                                  throttle::RateQuota {
                                                      max_burst: max_burst,
-                                                     max_rate: throttle::Rate {
-                                                         count: count,
-                                                         period: time::Duration::seconds(period),
-                                                     },
+                                                     max_rate: rate,
                                                  });
 
         let (throttled, rate_limit_result) = try!(limiter.rate_limit(bucket, quantity));
