@@ -117,9 +117,10 @@ impl<T: store::Store> RateLimiter<T> {
             let tat = if tat_val == -1 {
                 time::now()
             } else {
+                let ns = (10 as i64).pow(9);
                 time::at(time::Timespec {
-                    sec: tat_val,
-                    nsec: 0,
+                    sec: tat_val / ns,
+                    nsec: (tat_val % ns) as i32,
                 })
             };
 
