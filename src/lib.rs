@@ -36,11 +36,6 @@ impl redis::Command for ThrottleCommand {
                                [<quantity>]"));
         }
 
-        let parse_i64 = |arg: &str| -> Result<i64, ThrottleError> {
-            arg.parse::<i64>()
-                .map_err(|_| error!("Couldn't parse as integer: {}", arg))
-        };
-
         // the first argument is command name "throttle" (ignore it)
         let bucket = args[1];
         let max_burst = try!(parse_i64(args[2]));
@@ -120,6 +115,11 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
     }
 
     return Status::Ok;
+}
+
+fn parse_i64(arg: &str) -> Result<i64, ThrottleError> {
+    arg.parse::<i64>()
+        .map_err(|_| error!("Couldn't parse as integer: {}", arg))
 }
 
 #[cfg(test)]
