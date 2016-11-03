@@ -38,7 +38,6 @@ impl Rate {
     {
         let duration_ns = make_duration(1).num_nanoseconds().unwrap();
         let count_ns = time::Duration::seconds(n).num_nanoseconds().unwrap();
-        println!("duration_ns = {}, count_ns = {}", duration_ns, count_ns);
         Rate {
             period:
                 time::Duration::milliseconds((((duration_ns as f64) / (count_ns as f64)) as i64) *
@@ -98,10 +97,14 @@ impl<T: store::Store> RateLimiter<T> {
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
-        self.store.log_debug(format!("\n\n----\nBucket: {}, quantity: {}, emission_interval: \
-                                      {}ms",
-                                     key,
-                                     quantity,
+        self.store.log_debug("");
+        self.store.log_debug("-----");
+        self.store.log_debug(format!("bucket = {}", key).as_str());
+        self.store.log_debug(format!("quantity = {}", key).as_str());
+        self.store.log_debug(format!("delay_variation_tolerance = {}ms",
+                                     self.delay_variation_tolerance.num_milliseconds())
+            .as_str());
+        self.store.log_debug(format!("emission_interval = {}ms",
                                      self.emission_interval.num_milliseconds())
             .as_str());
 
