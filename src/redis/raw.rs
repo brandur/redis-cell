@@ -68,7 +68,7 @@ extern "C" {
 
     pub static RedisModule_Call: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                cmdname: *const u8,
-                                               fmts: &[*const u8])
+                                               fmts: *const *const u8)
                                                -> *mut RedisModuleCallReply;
 
     pub static RedisModule_CallReplyType: extern "C" fn(reply: *mut RedisModuleCallReply)

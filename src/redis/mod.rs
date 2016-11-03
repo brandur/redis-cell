@@ -50,7 +50,7 @@ impl Redis {
         let terminated_args: Vec<*const u8> =
             args.iter().map(|a| format!("{}\0", a).as_ptr()).collect();
         let raw_reply =
-            raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_slice());
+            raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_ptr());
         let reply_res = manifest_redis_reply(raw_reply);
 
         match reply_res {
