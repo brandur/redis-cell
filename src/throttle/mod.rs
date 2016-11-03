@@ -8,6 +8,10 @@ pub mod store;
 
 use error::ThrottleError;
 
+// Maximum number of times to retry set_if_not_exists/compare_and_swap
+// operations before returning an error.
+const MAX_CAS_ATTEMPTS: i64 = 10;
+
 pub struct Rate {
     pub count: i64,
     pub period: time::Duration,
@@ -91,15 +95,77 @@ impl<T: store::Store> RateLimiter<T> {
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
-        println!("rate_limit: {} {}", key, quantity);
-        Ok((false,
-            RateLimitResult {
-            limit: 0,
-            remaining: 0,
-            reset_after: time::Duration::seconds(1),
-            retry_after: time::Duration::seconds(1),
-        }))
-    }
+
+        let i = 0;
+        let limited = false;
+        let new_tat: time::Tm;
+        let now: time::Tm;
+        let tat: time::Tm;
+        let ttl: time::Duration;
+        let rlc = RateLimitResult{limit: self.limit, retry_after: time::Duration::seconds(-1)};
+
+        loop {
+            // tat refers to the theoretical arrival time that would be expected
+            // from equally spaced requests at exactly the rate limit.
+            let (tat_val, now) = try!(self.store.get_with_time(key));
+
+            tat = if tat_val == -1 {
+                time::now()
+            } else {
+                time::at(time::Timespec { sec: tat_val })
+            };
+
+            let increment = time::Duration::nanoseconds(self.emission_interval.num_nanoseconds().unwrap() * quantity);
+
+            new_tat = if now > tat {
+                now + increment
+            } else {
+                tat + increment
+            };
+
+            // Block the request if the next permitted time is in the future
+            let allow_at = new_tat - self.delay_variation_tolerance;
+            let diff = now - allow_at;
+            if diff < 0 {
+                if increment <= self.delay_variation_tolerance {
+                    rlc.retry_after = -diff;
+                }
+                ttl = tat - now;
+                limited = true;
+                break;
+            }
+
+            ttl = new_tat - now;
+
+            let res = if tat_val == -1 {
+                self.store.set_if_not_exists_with_ttl(key, nano_seconds(new_tat), ttl)
+            } else {
+                self.store.compare_and_swap_with_ttl(key, tat_val, nano_seconds(new_tat), ttl)
+            };
+
+            if res.is_ok() {
+                return Ok((false, rlc))
+            }
+
+            if updated {
+                break
+            }
+
+            i++
+            if i > MAX_CAS_ATTEMPTS {
+                return Err(ThrottleError::new(format!("Failed to store updated rate limit data for key {} after {} attempts.", key, i)));
+            }
+        }
+
+        let next = self.delay_variation_tolerance - ttl;
+        if next > -self.emission_interval {
+            // TODO: check that num_seconds is actually what we want here
+            rlc.remaining = div_durations(next, self.emission_interval).num_seconds();
+        }
+        rlc.reset_after = ttl;
+
+        Ok((limited, rlc))
+	}
 }
 
 pub struct RateQuota {
