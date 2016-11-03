@@ -1,3 +1,12 @@
+macro_rules! error {
+    ($message:expr) => {
+        ThrottleError::generic($message)
+    };
+    ($message:expr, $($arg:tt)*) => {
+        ThrottleError::generic(format!($message, $($arg)+).as_str())
+    }
+}
+
 macro_rules! log_debug {
     ($logger:expr, $target:expr) => {
         if cfg!(debug_assertions) {

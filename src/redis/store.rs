@@ -40,7 +40,7 @@ impl<'a> store::Store for RedisStore<'a> {
             // action.
             redis::Reply::Integer(_) => Ok(false),
 
-            _ => Err(ThrottleError::generic("GET returned non-string non-nil value.")),
+            _ => Err(error!("GET returned non-string non-nil value.")),
         }
     }
 
@@ -50,15 +50,8 @@ impl<'a> store::Store for RedisStore<'a> {
         let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
             redis::Reply::Nil => Ok((-1, time::now_utc())),
-
             redis::Reply::Integer(n) => Ok((n, time::now_utc())),
-
-            x => {
-                Err(ThrottleError::generic(format!("Found non-integer in key: {} (type: {:?})",
-                                                   key,
-                                                   x)
-                    .as_str()))
-            }
+            x => Err(error!("Found non-integer in key: {} (type: {:?})", key, x)),
         }
     }
 

@@ -32,15 +32,13 @@ impl ThrottleCommand {
 impl redis::Command for ThrottleCommand {
     fn run(&self, r: redis::Redis, args: &[&str]) -> redis::CommandResult {
         if args.len() != 5 && args.len() != 6 {
-            return Err(ThrottleError::generic("Usage: throttle <bucket> <max_burst> \
-                                               <count> <period> [<quantity>]"));
+            return Err(error!("Usage: throttle <bucket> <max_burst> <count> <period> \
+                               [<quantity>]"));
         }
 
         let parse_i64 = |arg: &str| -> Result<i64, ThrottleError> {
             arg.parse::<i64>()
-                .map_err(|_| {
-                    ThrottleError::generic(format!("Couldn't parse as integer: {}", arg).as_str())
-                })
+                .map_err(|_| error!("Couldn't parse as integer: {}", arg))
         };
 
         // the first argument is command name "throttle" (ignore it)

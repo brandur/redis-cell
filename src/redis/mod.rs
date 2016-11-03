@@ -81,7 +81,7 @@ impl Redis {
                                              terminated_args[1],
                                              terminated_args[2])
             }
-            _ => return Err(ThrottleError::generic("Can't support that many CALL arguments")),
+            _ => return Err(error!("Can't support that many CALL arguments")),
         };
 
         for redis_str in &terminated_args {
@@ -191,7 +191,7 @@ impl Redis {
 fn handle_status(status: raw::Status, message: &str) -> Result<bool, ThrottleError> {
     match status {
         raw::Status::Ok => Ok(true),
-        raw::Status::Err => Err(ThrottleError::generic(message)),
+        raw::Status::Err => Err(error!(message)),
     }
 }
 
@@ -230,12 +230,9 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, 
 
         // TODO: I need to actually extract the error from Redis here. Also, it
         // should probably be its own non-generic variety of ThrottleError.
-        raw::ReplyType::Error => Err(ThrottleError::generic("Redis replied with an error.")),
+        raw::ReplyType::Error => Err(error!("Redis replied with an error.")),
 
-        other => {
-            Err(ThrottleError::generic(format!("Don't yet handle Redis type: {:?}", other)
-                .as_str()))
-        }
+        other => Err(error!("Don't yet handle Redis type: {:?}", other)),
     }
 }
 
@@ -277,12 +274,7 @@ fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
         Reply::Unknown => Ok(false),
         Reply::Integer(n) if n == 0 => Ok(false),
         Reply::Integer(n) if n == 1 => Ok(true),
-        r => {
-            Err(ThrottleError::generic(format!("Command returned non-boolean value (type was \
-                                                {:?}).",
-                                               r)
-                .as_str()))
-        }
+        r => Err(error!("Command returned non-boolean value (type was {:?}).", r)),
     }
 }
 
@@ -291,11 +283,6 @@ fn parse_simple_string(reply: Reply) -> Result<bool, ThrottleError> {
         // may also return a Redis null, but not with the parameters that
         // we currently allow
         Reply::String(ref s) if s.as_str() == "OK" => Ok(true),
-        r => {
-            Err(ThrottleError::generic(format!("Command returned non-string value (type was \
-                                                {:?}).",
-                                               r)
-                .as_str()))
-        }
+        r => Err(error!("Command returned non-string value (type was {:?}).", r)),
     }
 }

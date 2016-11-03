@@ -210,10 +210,9 @@ impl<T: store::Store> RateLimiter<T> {
 
             i += 1;
             if i > MAX_CAS_ATTEMPTS {
-                return Err(ThrottleError::generic(format!("Failed to update rate limit after \
+                return Err(error!("Failed to update rate limit after \
                                                            {} attempts",
-                                                          i)
-                    .as_str()));
+                                  i));
             }
         }
 
