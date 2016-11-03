@@ -28,7 +28,7 @@ impl ThrottleCommand {
 
 impl redis::Command for ThrottleCommand {
     fn run(&self, r: redis::Redis, args: &[&str]) -> redis::CommandResult {
-        if args.len() != 4 && args.len() != 5 {
+        if args.len() != 5 && args.len() != 6 {
             return Err(ThrottleError::generic("Usage: throttle <bucket> <max_burst> \
                                                <count> <period> [<quantity>]"));
         }

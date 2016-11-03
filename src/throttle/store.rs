@@ -7,7 +7,7 @@ pub trait Store {
                                  key: &str,
                                  old: i64,
                                  new: i64,
-                                 ttl: i64)
+                                 ttl: time::Duration)
                                  -> Result<bool, ThrottleError>;
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError>;
@@ -15,6 +15,6 @@ pub trait Store {
     fn set_if_not_exists_with_ttl(&self,
                                   key: &str,
                                   value: i64,
-                                  ttl: i64)
+                                  ttl: time::Duration)
                                   -> Result<bool, ThrottleError>;
 }

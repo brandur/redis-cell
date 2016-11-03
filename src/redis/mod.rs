@@ -22,6 +22,7 @@ pub struct Redis {
     ctx: *mut raw::RedisModuleCtx,
 }
 
+#[derive(Debug)]
 pub enum Reply {
     Array,
     Error,
@@ -39,7 +40,9 @@ impl Redis {
         let raw_reply =
             raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_slice());
         let reply = manifest_redis_reply(raw_reply);
-        raw::RedisModule_FreeCallReply(raw_reply);
+        // TODO: PROBABLE MEMORY LEAK!!!!!
+        //
+        // raw::RedisModule_FreeCallReply(raw_reply);
         reply
     }
 

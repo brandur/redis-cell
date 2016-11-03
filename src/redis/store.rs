@@ -19,20 +19,22 @@ impl<'a> store::Store for RedisStore<'a> {
                                  key: &str,
                                  old: i64,
                                  new: i64,
-                                 ttl: i64)
+                                 ttl: time::Duration)
                                  -> Result<bool, ThrottleError> {
         let val = try!(self.r.get(key));
         match val {
-            // Key did not exist.
+            // Key did not exist. The docs say that this should be a Redis nil,
+            // but it apparently comes back as an unknown; just handle both.
             redis::Reply::Nil => Ok(false),
+            redis::Reply::Unknown => Ok(false),
 
             // Still the old value.
             redis::Reply::Integer(n) if n == old => Ok(false),
 
             // Not the old value: perform the swap.
             redis::Reply::Integer(_) => {
-                if ttl > 0 {
-                    try!(self.r.setex(key, ttl, new.to_string().as_str()));
+                if ttl.num_seconds() > 1 {
+                    try!(self.r.setex(key, ttl.num_seconds(), new.to_string().as_str()));
                 } else {
                     try!(self.r.set(key, new.to_string().as_str()));
                 }
@@ -49,19 +51,30 @@ impl<'a> store::Store for RedisStore<'a> {
         // same thing, but we should probably reconcile this.
         let val = try!(self.r.get(key));
         match val {
+            // Key did not exist. The docs say that this should be a Redis nil,
+            // but it apparently comes back as an unknown; just handle both.
+            redis::Reply::Nil => Ok((0, time::now())),
+            redis::Reply::Unknown => Ok((0, time::now())),
+
             redis::Reply::Integer(n) => Ok((n, time::now())),
-            _ => Err(ThrottleError::generic(format!("Found non-integer in key: {}", key).as_str())),
+
+            x => {
+                Err(ThrottleError::generic(format!("Found non-integer in key: {} (type: {:?})",
+                                                   key,
+                                                   x)
+                    .as_str()))
+            }
         }
     }
 
     fn set_if_not_exists_with_ttl(&self,
                                   key: &str,
                                   value: i64,
-                                  ttl: i64)
+                                  ttl: time::Duration)
                                   -> Result<bool, ThrottleError> {
         let val = try!(self.r.setnx(key, value.to_string().as_str()));
-        if ttl > 0 {
-            try!(self.r.expire(key, ttl));
+        if ttl.num_seconds() > 1 {
+            try!(self.r.expire(key, ttl.num_seconds()));
         }
         Ok(val)
     }
