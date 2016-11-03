@@ -1,6 +1,9 @@
 extern crate libc;
 extern crate time;
 
+#[macro_use]
+mod macros;
+
 pub mod error;
 mod redis;
 pub mod throttle;

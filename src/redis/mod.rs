@@ -10,19 +10,6 @@ use error::ThrottleError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 
-macro_rules! log_debug {
-    ($logger:expr, $target:expr) => {
-        if cfg!(debug_assertions) {
-            $logger.log_debug($target)
-        }
-    };
-    ($logger:expr, $target:expr, $($arg:tt)*) => {
-        if cfg!(debug_assertions) {
-            $logger.log_debug(format!($target, $($arg)+).as_str())
-        }
-    }
-}
-
 pub trait Command {
     fn run(&self, r: Redis, args: &[&str]) -> CommandResult;
 }

@@ -12,19 +12,6 @@ use error::ThrottleError;
 // operations before returning an error.
 const MAX_CAS_ATTEMPTS: i64 = 10;
 
-macro_rules! log_debug {
-    ($store:expr, $target:expr) => {
-        if cfg!(debug_assertions) {
-            $store.log_debug($target)
-        }
-    };
-    ($store:expr, $target:expr, $($arg:tt)*) => {
-        if cfg!(debug_assertions) {
-            $store.log_debug(format!($target, $($arg)+).as_str())
-        }
-    }
-}
-
 pub struct Rate {
     pub period: time::Duration,
 }
