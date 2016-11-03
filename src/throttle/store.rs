@@ -12,6 +12,8 @@ pub trait Store {
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError>;
 
+    fn log_debug(&self, message: &str);
+
     fn set_if_not_exists_with_ttl(&self,
                                   key: &str,
                                   value: i64,

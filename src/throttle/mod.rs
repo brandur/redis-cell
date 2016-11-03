@@ -107,6 +107,8 @@ impl<T: store::Store> RateLimiter<T> {
             retry_after: time::Duration::seconds(-1),
         };
 
+        self.store.log_debug("hello");
+
         loop {
             // tat refers to the theoretical arrival time that would be expected
             // from equally spaced requests at exactly the rate limit.

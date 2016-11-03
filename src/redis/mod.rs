@@ -23,6 +23,14 @@ pub struct Redis {
 }
 
 #[derive(Debug)]
+pub enum LogLevel {
+    Debug,
+    Notice,
+    Verbose,
+    Warning,
+}
+
+#[derive(Debug)]
 pub enum Reply {
     Array,
     Error,
@@ -56,6 +64,12 @@ impl Redis {
 
     fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
         self.call("GET", &[key])
+    }
+
+    fn log(&self, level: LogLevel, message: &str) {
+        raw::RedisModule_Log(self.ctx,
+                             format!("{:?}\0", level).to_lowercase().as_ptr(),
+                             format!("{}\0", message).as_ptr());
     }
 
     /// Tells Redis that we're about to reply with an (Redis) array.

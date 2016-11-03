@@ -104,6 +104,10 @@ extern "C" {
 
     pub static RedisModule_GetSelectedDb: extern "C" fn(ctx: *mut RedisModuleCtx) -> c_int;
 
+    pub static RedisModule_Log: extern "C" fn(ctx: *mut RedisModuleCtx,
+                                              level: *const u8,
+                                              fmt: *const u8);
+
     pub static RedisModule_OpenKey: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                   keyname: *mut RedisModuleString,
                                                   mode: KeyMode)
