@@ -102,10 +102,10 @@ impl<T: store::Store> RateLimiter<T> {
         log_debug!(self.store, "bucket = {}", key);
         log_debug!(self.store, "quantity = {}", quantity);
         log_debug!(self.store,
-                   "delay_variation_tolerance = {}",
+                   "delay_variation_tolerance = {}ms",
                    self.delay_variation_tolerance.num_milliseconds());
         log_debug!(self.store,
-                   "emission_interval = {}",
+                   "emission_interval = {}ms",
                    self.emission_interval.num_milliseconds());
 
         let mut rlc = RateLimitResult {
@@ -115,77 +115,118 @@ impl<T: store::Store> RateLimiter<T> {
             reset_after: time::Duration::seconds(-1),
         };
 
-        // tat refers to the theoretical arrival time that would be expected
-        // from equally spaced requests at exactly the rate limit.
-        let (tat_val, now) = try!(self.store.get_with_time(key));
+        // Rust actually detects that this variable can only ever be assigned
+        // once despite our loops and conditions so it doesn't have to be
+        // mutable. Amazing.
+        let limited: bool;
 
-        let tat = if tat_val == -1 {
-            let tat = now;
-            log_debug!(self.store, "TAT is NOW: {} (-1 from store)", tat.rfc3339());
-            tat
-        } else {
-            let ns = (10 as i64).pow(9);
-            let tat = time::at(time::Timespec {
-                sec: tat_val / ns,
-                nsec: (tat_val % ns) as i32,
-            });
+        let mut ttl: time::Duration;
+
+        // Looping here is not about retrying communication failures, it's
+        // about retrying contention. While we're performing our calculations
+        // it's possible for another limiter to be doing its own simultaneously
+        // and beat us to the punch. In that case only one limiter should win.
+        //
+        // Note that when running with our internal Redis store (i.e. the
+        // normal case for the redis-throttle project) this is actually *not*
+        // true because our entire operation will execute atomically.
+        let mut i = 0;
+        loop {
+            log_debug!(self.store, "iteration = {}", i);
+
+            // tat refers to the theoretical arrival time that would be expected
+            // from equally spaced requests at exactly the rate limit.
+            let (tat_val, now) = try!(self.store.get_with_time(key));
+
+            let tat = if tat_val == -1 {
+                let tat = now;
+                log_debug!(self.store, "TAT is NOW: {} (-1 from store)", tat.rfc3339());
+                tat
+            } else {
+                let ns = (10 as i64).pow(9);
+                let tat = time::at(time::Timespec {
+                    sec: tat_val / ns,
+                    nsec: (tat_val % ns) as i32,
+                });
+                log_debug!(self.store,
+                           "TAT is: {} (now is {})",
+                           tat.rfc3339(),
+                           now.rfc3339());
+                tat
+            };
+
+            let increment = time::Duration::nanoseconds(self.emission_interval
+                .num_nanoseconds()
+                .unwrap() * quantity);
             log_debug!(self.store,
-                       "TAT is: {} (now is {})",
-                       tat.rfc3339(),
-                       now.rfc3339());
-            tat
-        };
+                       "TAT increment is: {}ms",
+                       increment.num_milliseconds());
 
-        let increment = time::Duration::nanoseconds(self.emission_interval
-            .num_nanoseconds()
-            .unwrap() * quantity);
-        log_debug!(self.store,
-                   "TAT increment is: {}ms",
-                   increment.num_milliseconds());
+            let new_tat = if now > tat {
+                now + increment
+            } else {
+                tat + increment
+            };
+            log_debug!(self.store, "New TAT is: {}", new_tat.rfc3339());
 
-        let new_tat = if now > tat {
-            now + increment
-        } else {
-            tat + increment
-        };
-        log_debug!(self.store, "New TAT is: {}", new_tat.rfc3339());
+            // Block the request if the next permitted time is in the future.
+            let allow_at = new_tat - self.delay_variation_tolerance;
+            let diff = now - allow_at;
+            if diff.num_seconds() < 0 {
+                log_debug!(self.store,
+                           "Next allowed request is in the future. Diff: {}",
+                           diff.num_milliseconds());
 
-        // Block the request if the next permitted time is in the future.
-        let allow_at = new_tat - self.delay_variation_tolerance;
-        let diff = now - allow_at;
-        if diff.num_seconds() < 0 {
-            log_debug!(self.store,
-                       "Next allowed request is in the future. Diff: {}",
-                       diff.num_milliseconds());
+                if increment <= self.delay_variation_tolerance {
+                    rlc.retry_after = -diff;
+                }
 
-            if increment <= self.delay_variation_tolerance {
-                rlc.retry_after = -diff;
+                limited = true;
+                ttl = tat - now;
+                break;
             }
 
-            let ttl = tat - now;
-            update_results(self, &mut rlc, ttl);
-            return Ok((true, rlc));
+            ttl = new_tat - now;
+            log_debug!(self.store,
+                       "Allowed. New TAT: {} New TTL: {}ms",
+                       new_tat.rfc3339(),
+                       diff.num_milliseconds());
+
+            // If the key was originally missing, set it if if doesn't exist.
+            // If it was there, try to compare and swap.
+            //
+            // Both of these cases are designed to work around the fact that
+            // another limiter could be running in parallel.
+            let updated = if tat_val == -1 {
+                try!(self.store.set_if_not_exists_with_ttl(key, nano_seconds(new_tat), ttl))
+            } else {
+                try!(self.store.compare_and_swap_with_ttl(key, tat_val, nano_seconds(new_tat), ttl))
+            };
+
+            if updated {
+                limited = false;
+                break;
+            }
+
+            i += 1;
+            if i > MAX_CAS_ATTEMPTS {
+                return Err(ThrottleError::generic(format!("Failed to update rate limit after \
+                                                           {} attempts",
+                                                          i)
+                    .as_str()));
+            }
         }
 
-        let ttl = new_tat - now;
-        log_debug!(self.store,
-                   "Allowed. New TAT: {} New TTL: {}ms",
-                   new_tat.rfc3339(),
-                   diff.num_milliseconds());
+        let next = self.delay_variation_tolerance - ttl;
+        if next > -self.emission_interval {
+            rlc.remaining = (next.num_microseconds().unwrap() as f64 /
+                             self.emission_interval
+                .num_microseconds()
+                .unwrap() as f64) as i64;
+        }
+        rlc.reset_after = ttl;
 
-        // TODO: what do we do about updated here? Appears to have been used
-        // for a loop decision.
-        //
-        // Later: that's because it's trying to detect whether another process
-        // has modified it while the rate limit logic has been running.
-        let _ = if tat_val == -1 {
-            try!(self.store.set_if_not_exists_with_ttl(key, nano_seconds(new_tat), ttl))
-        } else {
-            try!(self.store.compare_and_swap_with_ttl(key, tat_val, nano_seconds(new_tat), ttl))
-        };
-
-        update_results(self, &mut rlc, ttl);
-        Ok((false, rlc))
+        Ok((limited, rlc))
     }
 }
 
@@ -203,18 +244,11 @@ fn nano_seconds(x: time::Tm) -> i64 {
     ts.sec * (10 as i64).pow(9) + (ts.nsec as i64)
 }
 
-fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
-                                   rlc: &mut RateLimitResult,
-                                   ttl: time::Duration) {
-    let next = limiter.delay_variation_tolerance - ttl;
-    if next > -limiter.emission_interval {
-        rlc.remaining = (next.num_microseconds().unwrap() as f64 /
-                         limiter.emission_interval
-            .num_microseconds()
-            .unwrap() as f64) as i64;
-    }
-    rlc.reset_after = ttl;
-}
+// fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
+// rlc: &mut RateLimitResult,
+// ttl: time::Duration) {
+// }
+//
 
 #[cfg(test)]
 mod tests {
