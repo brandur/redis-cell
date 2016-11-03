@@ -2,7 +2,7 @@
 
 extern crate libc;
 
-use libc::{c_int, c_longlong, size_t};
+use libc::{c_int, c_long, c_longlong, size_t};
 
 // Rust can't link against C macros (#define) so we just redefine them here.
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
@@ -108,6 +108,9 @@ extern "C" {
                                                   keyname: *mut RedisModuleString,
                                                   mode: KeyMode)
                                                   -> *mut RedisModuleKey;
+
+    pub static RedisModule_ReplyWithArray: extern "C" fn(ctx: *mut RedisModuleCtx, len: c_long)
+                                                         -> Status;
 
     pub static RedisModule_ReplyWithError: extern "C" fn(ctx: *mut RedisModuleCtx, err: *const u8);
 

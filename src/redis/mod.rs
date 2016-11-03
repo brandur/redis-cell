@@ -7,7 +7,7 @@ pub mod raw;
 pub mod store;
 
 use error::ThrottleError;
-use libc::{c_int, size_t};
+use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 
 pub trait Command {
@@ -42,6 +42,9 @@ impl Redis {
         let reply = manifest_redis_reply(raw_reply);
         // TODO: PROBABLE MEMORY LEAK!!!!!
         //
+        // This free needs to be here but currently seems to produce a segfault
+        // in Redis: more debugging is required.
+        //
         // raw::RedisModule_FreeCallReply(raw_reply);
         reply
     }
@@ -55,14 +58,28 @@ impl Redis {
         self.call("GET", &[key])
     }
 
+    /// Tells Redis that we're about to reply with an (Redis) array.
+    ///
+    /// Used by invoking once with the expected length and then calling any
+    /// combination of the other reply_* methods exactly that number of times.
+    ///
+    /// The success return value can be safely ignored.
+    pub fn reply_array(&self, len: i64) -> Result<bool, ThrottleError> {
+        handle_status(raw::RedisModule_ReplyWithArray(self.ctx, len as c_long),
+                      "Could not reply with long")
+    }
+
+    pub fn reply_integer(&self, integer: i64) -> Result<bool, ThrottleError> {
+        handle_status(raw::RedisModule_ReplyWithLongLong(self.ctx, integer as c_longlong),
+                      "Could not reply with longlong")
+    }
+
     pub fn reply_string(&self, message: &str) -> Result<bool, ThrottleError> {
         let redis_str = raw::RedisModule_CreateString(self.ctx,
                                                       format!("{}\0", message).as_ptr(),
                                                       message.len());
-        let res = match raw::RedisModule_ReplyWithString(self.ctx, redis_str) {
-            raw::Status::Ok => Ok(true),
-            raw::Status::Err => Err(ThrottleError::generic("Could not reply with string")),
-        };
+        let res = handle_status(raw::RedisModule_ReplyWithString(self.ctx, redis_str),
+                                "Could not reply with string");
         raw::RedisModule_FreeString(self.ctx, redis_str);
         res
     }
@@ -80,6 +97,13 @@ impl Redis {
     fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SETNX", &[key, val]));
         parse_bool(res)
+    }
+}
+
+fn handle_status(status: raw::Status, message: &str) -> Result<bool, ThrottleError> {
+    match status {
+        raw::Status::Ok => Ok(true),
+        raw::Status::Err => Err(ThrottleError::generic(message)),
     }
 }
 

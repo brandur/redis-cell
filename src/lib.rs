@@ -63,13 +63,18 @@ impl redis::Command for ThrottleCommand {
                                                      },
                                                  });
 
-        let (throttled, _) = try!(limiter.rate_limit(bucket, quantity));
+        let (throttled, rate_limit_result) = try!(limiter.rate_limit(bucket, quantity));
 
-        if throttled {
-            try!(r.reply_string("THROTTLED"));
-        } else {
-            try!(r.reply_string("good"));
-        }
+        // Reply with an array containing rate limiting results. Note that
+        // Redis' support for interesting data types is quite weak, so we have
+        // to jam a few square pegs into round holes. It's a little messy, but
+        // the interface comes out as pretty workable.
+        try!(r.reply_array(5));
+        try!(r.reply_integer(if !throttled { 1 } else { 0 }));
+        try!(r.reply_integer(rate_limit_result.limit));
+        try!(r.reply_integer(rate_limit_result.remaining));
+        try!(r.reply_integer(rate_limit_result.reset_after.num_seconds()));
+        try!(r.reply_integer(rate_limit_result.retry_after.num_seconds()));
 
         Ok(true)
     }
