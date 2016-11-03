@@ -66,11 +66,6 @@ extern "C" {
                                    api_version: c_int)
                                    -> Status;
 
-    pub static RedisModule_Call: extern "C" fn(ctx: *mut RedisModuleCtx,
-                                               cmdname: *const u8,
-                                               fmts: *const *const u8)
-                                               -> *mut RedisModuleCallReply;
-
     pub static RedisModule_CallReplyType: extern "C" fn(reply: *mut RedisModuleCallReply)
                                                         -> ReplyType;
 
@@ -133,4 +128,49 @@ extern "C" {
     pub static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
                                                     str: *mut RedisModuleString)
                                                     -> Status;
+}
+
+pub mod call1 {
+    use redis::raw;
+
+    #[allow(improper_ctypes)]
+    #[link(name = "redismodule")]
+    extern "C" {
+        pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
+                                                   cmdname: *const u8,
+                                                   fmt: *const u8,
+                                                   arg0: *mut raw::RedisModuleString)
+                                                   -> *mut raw::RedisModuleCallReply;
+    }
+}
+
+pub mod call2 {
+    use redis::raw;
+
+    #[allow(improper_ctypes)]
+    #[link(name = "redismodule")]
+    extern "C" {
+        pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
+                                                   cmdname: *const u8,
+                                                   fmt: *const u8,
+                                                   arg0: *mut raw::RedisModuleString,
+                                                   arg1: *mut raw::RedisModuleString)
+                                                   -> *mut raw::RedisModuleCallReply;
+    }
+}
+
+pub mod call3 {
+    use redis::raw;
+
+    #[allow(improper_ctypes)]
+    #[link(name = "redismodule")]
+    extern "C" {
+        pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
+                                                   cmdname: *const u8,
+                                                   fmt: *const u8,
+                                                   arg0: *mut raw::RedisModuleString,
+                                                   arg1: *mut raw::RedisModuleString,
+                                                   arg2: *mut raw::RedisModuleString)
+                                                   -> *mut raw::RedisModuleCallReply;
+    }
 }

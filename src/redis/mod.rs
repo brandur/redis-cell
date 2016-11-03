@@ -44,30 +44,87 @@ impl Redis {
     fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
         // TODO: remove or change to debug.
         self.log(LogLevel::Notice,
-                 format!("{} [start] args = {:?}", command, args).as_str());
+                 format!("{} [began] args = {:?}", command, args).as_str());
+        let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
+            .map(|a| raw::RedisModule_CreateString(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
+            .collect();
 
-        let terminated_command = format!("{}\0", command).as_ptr();
-        let terminated_args: Vec<*const u8> =
-            args.iter().map(|a| format!("{}\0", a).as_ptr()).collect();
-        let raw_reply =
-            raw::RedisModule_Call(self.ctx, terminated_command, terminated_args.as_ptr());
+        // One would hope that there's a better way to handle a va_list than
+        // this, but I can't find it for the life of me.
+        //
+        // TODO: Note that my main problem turned out to be something else, so
+        // it's worth trying to compact this back down to one call again.
+        let raw_reply = match args.len() {
+            1 => {
+                // WARNING: This is downright hazardous, but I've noticed that
+                // if I remove this format! from the line of invocation, the
+                // right memory layout doesn't make it into Redis (and it will
+                // reply with a -1 "unknown" to all calls). This is still
+                // unexplained and I need to do more legwork in understanding
+                // this.
+                raw::call1::RedisModule_Call(self.ctx,
+                                             format!("{}\0", command).as_ptr(),
+                                             "s\0".as_ptr(),
+                                             terminated_args[0])
+            }
+            2 => {
+                raw::call2::RedisModule_Call(self.ctx,
+                                             format!("{}\0", command).as_ptr(),
+                                             "ss\0".as_ptr(),
+                                             terminated_args[0],
+                                             terminated_args[1])
+            }
+            3 => {
+                raw::call3::RedisModule_Call(self.ctx,
+                                             format!("{}\0", command).as_ptr(),
+                                             "sss\0".as_ptr(),
+                                             terminated_args[0],
+                                             terminated_args[1],
+                                             terminated_args[2])
+            }
+            _ => return Err(ThrottleError::generic("Can't support that many CALL arguments")),
+        };
+
+        for redis_str in &terminated_args {
+            raw::RedisModule_FreeString(self.ctx, *redis_str);
+        }
+
         let reply_res = manifest_redis_reply(raw_reply);
+        raw::RedisModule_FreeCallReply(raw_reply);
 
         match reply_res {
             Ok(ref reply) => {
                 self.log(LogLevel::Notice,
-                         format!("{} [end] result = {:?}", command, reply).as_str())
+                         format!("{} [ended] result = {:?}", command, reply).as_str())
             }
             Err(_) => (),
         }
 
-        // TODO: PROBABLE MEMORY LEAK!!!!!
-        //
-        // This free needs to be here but currently seems to produce a segfault
-        // in Redis: more debugging is required.
-        //
-        // raw::RedisModule_FreeCallReply(raw_reply);
         reply_res
+    }
+
+    /// Coerces a Redis string as an integer.
+    ///
+    /// Redis is pretty dumb about data types. It nominally supports strings
+    /// versus integers, but an integer set in the store will continue to look
+    /// like a string (i.e. "1234") until some other operation like INCR forces
+    /// it coercion.
+    ///
+    /// This method coerces a Redis string that looks like an integer into an
+    /// integer response. All other types of replies are pass through
+    /// unmodified.
+    fn coerce_integer(&self,
+                      reply_res: Result<Reply, ThrottleError>)
+                      -> Result<Reply, ThrottleError> {
+        match reply_res {
+            Ok(Reply::String(s)) => {
+                match s.parse::<i64>() {
+                    Ok(n) => Ok(Reply::Integer(n)),
+                    _ => Ok(Reply::String(s)),
+                }
+            }
+            _ => reply_res,
+        }
     }
 
     fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
@@ -154,11 +211,6 @@ pub fn harness_command(command: &Command,
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
-    // TODO: remove
-    let x = raw::RedisModule_CallReplyType(reply);
-    let y = raw::RedisModule_CallReplyType(reply);
-    println!("reply type = {:?} ({:?})", x, (y as i64));
-
     match raw::RedisModule_CallReplyType(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::RedisModule_CallReplyInteger(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),

@@ -21,12 +21,9 @@ impl<'a> store::Store for RedisStore<'a> {
                                  new: i64,
                                  ttl: time::Duration)
                                  -> Result<bool, ThrottleError> {
-        let val = try!(self.r.get(key));
+        let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
-            // Key did not exist. The docs say that this should be a Redis nil,
-            // but it apparently comes back as an unknown; just handle both.
             redis::Reply::Nil => Ok(false),
-            redis::Reply::Unknown => Ok(false),
 
             // Still the old value.
             redis::Reply::Integer(n) if n == old => Ok(false),
@@ -49,12 +46,9 @@ impl<'a> store::Store for RedisStore<'a> {
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
         // TODO: currently leveraging that CommandError and ThrottleError are the
         // same thing, but we should probably reconcile this.
-        let val = try!(self.r.get(key));
+        let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
-            // Key did not exist. The docs say that this should be a Redis nil,
-            // but it apparently comes back as an unknown; just handle both.
             redis::Reply::Nil => Ok((-1, time::now())),
-            redis::Reply::Unknown => Ok((-1, time::now())),
 
             redis::Reply::Integer(n) => Ok((n, time::now())),
 
