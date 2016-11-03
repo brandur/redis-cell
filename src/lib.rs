@@ -74,8 +74,8 @@ impl redis::Command for ThrottleCommand {
         try!(r.reply_integer(if !throttled { 1 } else { 0 }));
         try!(r.reply_integer(rate_limit_result.limit));
         try!(r.reply_integer(rate_limit_result.remaining));
-        try!(r.reply_integer(rate_limit_result.reset_after.num_seconds()));
         try!(r.reply_integer(rate_limit_result.retry_after.num_seconds()));
+        try!(r.reply_integer(rate_limit_result.reset_after.num_seconds()));
 
         Ok(true)
     }
