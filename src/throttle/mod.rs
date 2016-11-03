@@ -48,18 +48,45 @@ pub struct RateLimitResult {
 }
 
 pub struct RateLimiter<T: store::Store> {
-    pub quota: RateQuota,
     pub store: T,
+
+    /// Think of the DVT as our flexibility: how far can you deviate from the
+    /// nominal equally spaced schedule? If you like leaky buckets, think about
+    /// it as the size of your bucket.
+    delay_variation_tolerance: time::Duration,
+
+    /// Think of the emission interval as the time between events in the
+    /// nominal equally spaced schedule. If you like leaky buckets, think of it
+    /// as how frequently the bucket leaks one unit.
+    emission_interval: time::Duration,
+
+    limit: i64,
 }
 
 impl<T: store::Store> RateLimiter<T> {
     pub fn new(store: T, quota: RateQuota) -> RateLimiter<T> {
         RateLimiter {
-            quota: quota,
+            delay_variation_tolerance: time::Duration::nanoseconds(quota.max_rate
+                .period
+                .num_nanoseconds()
+                .unwrap() *
+                                                                   (quota.max_burst + 1)),
+            emission_interval: quota.max_rate.period,
+            limit: quota.max_burst + 1,
             store: store,
         }
     }
 
+    /// RateLimit checks whether a particular key has exceeded a rate limit. It
+    /// also returns a RateLimitResult to provide additional information about
+    /// the state of the RateLimiter.
+    ///
+    /// If the rate limit has not been exceeded, the underlying storage is
+    /// updated by the supplied quantity. For example, a quantity of 1 might be
+    /// used to rate limit a single request while a greater quantity could rate
+    /// limit based on the size of a file upload in megabytes. If quantity is
+    /// 0, no update is performed allowing you to "peek" at the state of the
+    /// RateLimiter for a given key.
     pub fn rate_limit(&self,
                       key: &str,
                       quantity: i64)
