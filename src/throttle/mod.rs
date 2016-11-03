@@ -98,7 +98,8 @@ impl<T: store::Store> RateLimiter<T> {
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
-        self.store.log_debug(format!("Bucket: {}, quantity: {}, emission_interval: {}ms",
+        self.store.log_debug(format!("\n\n----\nBucket: {}, quantity: {}, emission_interval: \
+                                      {}ms",
                                      key,
                                      quantity,
                                      self.emission_interval.num_milliseconds())
@@ -116,10 +117,9 @@ impl<T: store::Store> RateLimiter<T> {
         let (tat_val, now) = try!(self.store.get_with_time(key));
 
         let tat = if tat_val == -1 {
-            let tat = time::now();
+            let tat = now;
             self.store
-                .log_debug(format!("TAT is 'time::now': {} (-1 from store)", tat.rfc3339())
-                    .as_str());
+                .log_debug(format!("TAT is NOW: {} (-1 from store)", tat.rfc3339()).as_str());
             tat
         } else {
             let ns = (10 as i64).pow(9);
@@ -127,9 +127,7 @@ impl<T: store::Store> RateLimiter<T> {
                 sec: tat_val / ns,
                 nsec: (tat_val % ns) as i32,
             });
-            self.store.log_debug(format!("TAT is: {} (now is {})",
-                                         tat.rfc3339(),
-                                         time::now().rfc3339())
+            self.store.log_debug(format!("TAT is: {} (now is {})", tat.rfc3339(), now.rfc3339())
                 .as_str());
             tat
         };
@@ -165,7 +163,11 @@ impl<T: store::Store> RateLimiter<T> {
         }
 
         let ttl = new_tat - now;
-        self.store.log_debug(format!("Allowed. New TTL: {}ms", diff.num_milliseconds()).as_str());
+        self.store.log_debug(format!("Allowed. New TAT: {} New TTL: {}ms",
+                                     new_tat.rfc3339(),
+                                     diff.num_milliseconds())
+            .as_str());
+        self.store.log_debug(format!("Setting: {}", nano_seconds(new_tat)).as_str());
 
         // TODO: what do we do about updated here? Appears to have been used
         // for a loop decision.

@@ -25,11 +25,8 @@ impl<'a> store::Store for RedisStore<'a> {
         match val {
             redis::Reply::Nil => Ok(false),
 
-            // Still the old value.
-            redis::Reply::Integer(n) if n == old => Ok(false),
-
-            // Not the old value: perform the swap.
-            redis::Reply::Integer(_) => {
+            // Still the old value: perform the swap.
+            redis::Reply::Integer(n) if n == old => {
                 if ttl.num_seconds() > 1 {
                     try!(self.r.setex(key, ttl.num_seconds(), new.to_string().as_str()));
                 } else {
@@ -38,6 +35,10 @@ impl<'a> store::Store for RedisStore<'a> {
 
                 Ok(true)
             }
+
+            // Not the old value: something else must have set it. Take no
+            // action.
+            redis::Reply::Integer(_) => Ok(false),
 
             _ => Err(ThrottleError::generic("GET returned non-string non-nil value.")),
         }
@@ -48,9 +49,9 @@ impl<'a> store::Store for RedisStore<'a> {
         // same thing, but we should probably reconcile this.
         let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
-            redis::Reply::Nil => Ok((-1, time::now())),
+            redis::Reply::Nil => Ok((-1, time::now_utc())),
 
-            redis::Reply::Integer(n) => Ok((n, time::now())),
+            redis::Reply::Integer(n) => Ok((n, time::now_utc())),
 
             x => {
                 Err(ThrottleError::generic(format!("Found non-integer in key: {} (type: {:?})",
