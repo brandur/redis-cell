@@ -63,8 +63,7 @@ impl<'a> store::Store for RedisStore<'a> {
     }
 
     fn log_debug(&self, message: &str) {
-        // TODO: change to actual debug.
-        self.r.log(redis::LogLevel::Notice, message);
+        self.r.log_debug(message);
     }
 
     fn set_if_not_exists_with_ttl(&self,

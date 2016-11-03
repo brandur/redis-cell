@@ -10,6 +10,19 @@ use error::ThrottleError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 
+macro_rules! log_debug {
+    ($logger:expr, $target:expr) => {
+        if cfg!(debug_assertions) {
+            $logger.log_debug($target)
+        }
+    };
+    ($logger:expr, $target:expr, $($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            $logger.log_debug(format!($target, $($arg)+).as_str())
+        }
+    }
+}
+
 pub trait Command {
     fn run(&self, r: Redis, args: &[&str]) -> CommandResult;
 }
@@ -42,9 +55,8 @@ pub enum Reply {
 
 impl Redis {
     fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
-        // TODO: remove or change to debug.
-        self.log(LogLevel::Notice,
-                 format!("{} [began] args = {:?}", command, args).as_str());
+        log_debug!(self, "{} [began] args = {:?}", command, args);
+
         let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
             .map(|a| raw::RedisModule_CreateString(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
             .collect();
@@ -94,8 +106,7 @@ impl Redis {
 
         match reply_res {
             Ok(ref reply) => {
-                self.log(LogLevel::Notice,
-                         format!("{} [ended] result = {:?}", command, reply).as_str())
+                log_debug!(self, "{} [ended] result = {:?}", command, reply);
             }
             Err(_) => (),
         }
@@ -140,6 +151,12 @@ impl Redis {
         raw::RedisModule_Log(self.ctx,
                              format!("{:?}\0", level).to_lowercase().as_ptr(),
                              format!("{}\0", message).as_ptr());
+    }
+
+    fn log_debug(&self, message: &str) {
+        // TODO: change to actual debug. Notice for now so that we can see
+        // things.
+        self.log(LogLevel::Notice, message);
     }
 
     /// Tells Redis that we're about to reply with an (Redis) array.

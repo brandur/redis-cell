@@ -12,6 +12,19 @@ use error::ThrottleError;
 // operations before returning an error.
 const MAX_CAS_ATTEMPTS: i64 = 10;
 
+macro_rules! log_debug {
+    ($store:expr, $target:expr) => {
+        if cfg!(debug_assertions) {
+            $store.log_debug($target)
+        }
+    };
+    ($store:expr, $target:expr, $($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            $store.log_debug(format!($target, $($arg)+).as_str())
+        }
+    }
+}
+
 pub struct Rate {
     pub period: time::Duration,
 }
@@ -97,16 +110,16 @@ impl<T: store::Store> RateLimiter<T> {
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
-        self.store.log_debug("");
-        self.store.log_debug("-----");
-        self.store.log_debug(format!("bucket = {}", key).as_str());
-        self.store.log_debug(format!("quantity = {}", key).as_str());
-        self.store.log_debug(format!("delay_variation_tolerance = {}ms",
-                                     self.delay_variation_tolerance.num_milliseconds())
-            .as_str());
-        self.store.log_debug(format!("emission_interval = {}ms",
-                                     self.emission_interval.num_milliseconds())
-            .as_str());
+        log_debug!(self.store, "");
+        log_debug!(self.store, "-----");
+        log_debug!(self.store, "bucket = {}", key);
+        log_debug!(self.store, "quantity = {}", quantity);
+        log_debug!(self.store,
+                   "delay_variation_tolerance = {}",
+                   self.delay_variation_tolerance.num_milliseconds());
+        log_debug!(self.store,
+                   "emission_interval = {}",
+                   self.emission_interval.num_milliseconds());
 
         let mut rlc = RateLimitResult {
             limit: self.limit,
@@ -121,8 +134,7 @@ impl<T: store::Store> RateLimiter<T> {
 
         let tat = if tat_val == -1 {
             let tat = now;
-            self.store
-                .log_debug(format!("TAT is NOW: {} (-1 from store)", tat.rfc3339()).as_str());
+            log_debug!(self.store, "TAT is NOW: {} (-1 from store)", tat.rfc3339());
             tat
         } else {
             let ns = (10 as i64).pow(9);
@@ -130,31 +142,34 @@ impl<T: store::Store> RateLimiter<T> {
                 sec: tat_val / ns,
                 nsec: (tat_val % ns) as i32,
             });
-            self.store.log_debug(format!("TAT is: {} (now is {})", tat.rfc3339(), now.rfc3339())
-                .as_str());
+            log_debug!(self.store,
+                       "TAT is: {} (now is {})",
+                       tat.rfc3339(),
+                       now.rfc3339());
             tat
         };
 
         let increment = time::Duration::nanoseconds(self.emission_interval
             .num_nanoseconds()
             .unwrap() * quantity);
-        self.store
-            .log_debug(format!("TAT increment is: {}ms", increment.num_milliseconds()).as_str());
+        log_debug!(self.store,
+                   "TAT increment is: {}ms",
+                   increment.num_milliseconds());
 
         let new_tat = if now > tat {
             now + increment
         } else {
             tat + increment
         };
-        self.store.log_debug(format!("New TAT is: {}", new_tat.rfc3339()).as_str());
+        log_debug!(self.store, "New TAT is: {}", new_tat.rfc3339());
 
         // Block the request if the next permitted time is in the future.
         let allow_at = new_tat - self.delay_variation_tolerance;
         let diff = now - allow_at;
         if diff.num_seconds() < 0 {
-            self.store.log_debug(format!("Next allowed request is in the future. Diff: {}",
-                                         diff.num_milliseconds())
-                .as_str());
+            log_debug!(self.store,
+                       "Next allowed request is in the future. Diff: {}",
+                       diff.num_milliseconds());
 
             if increment <= self.delay_variation_tolerance {
                 rlc.retry_after = -diff;
@@ -166,11 +181,10 @@ impl<T: store::Store> RateLimiter<T> {
         }
 
         let ttl = new_tat - now;
-        self.store.log_debug(format!("Allowed. New TAT: {} New TTL: {}ms",
-                                     new_tat.rfc3339(),
-                                     diff.num_milliseconds())
-            .as_str());
-        self.store.log_debug(format!("Setting: {}", nano_seconds(new_tat)).as_str());
+        log_debug!(self.store,
+                   "Allowed. New TAT: {} New TTL: {}ms",
+                   new_tat.rfc3339(),
+                   diff.num_milliseconds());
 
         // TODO: what do we do about updated here? Appears to have been used
         // for a loop decision.
@@ -188,19 +202,6 @@ impl<T: store::Store> RateLimiter<T> {
     }
 }
 
-fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
-                                   rlc: &mut RateLimitResult,
-                                   ttl: time::Duration) {
-    let next = limiter.delay_variation_tolerance - ttl;
-    if next > -limiter.emission_interval {
-        rlc.remaining = (next.num_microseconds().unwrap() as f64 /
-                         limiter.emission_interval
-            .num_microseconds()
-            .unwrap() as f64) as i64;
-    }
-    rlc.reset_after = ttl;
-}
-
 pub struct RateQuota {
     pub max_burst: i64,
     pub max_rate: Rate,
@@ -213,6 +214,19 @@ fn div_durations(x: time::Duration, y: time::Duration) -> time::Duration {
 fn nano_seconds(x: time::Tm) -> i64 {
     let ts = x.to_timespec();
     ts.sec * (10 as i64).pow(9) + (ts.nsec as i64)
+}
+
+fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
+                                   rlc: &mut RateLimitResult,
+                                   ttl: time::Duration) {
+    let next = limiter.delay_variation_tolerance - ttl;
+    if next > -limiter.emission_interval {
+        rlc.remaining = (next.num_microseconds().unwrap() as f64 /
+                         limiter.emission_interval
+            .num_microseconds()
+            .unwrap() as f64) as i64;
+    }
+    rlc.reset_after = ttl;
 }
 
 #[cfg(test)]
