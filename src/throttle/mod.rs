@@ -108,8 +108,8 @@ impl<T: store::Store> RateLimiter<T> {
         let mut rlc = RateLimitResult {
             limit: self.limit,
             remaining: 0,
-            reset_after: time::Duration::seconds(-1),
             retry_after: time::Duration::seconds(-1),
+            reset_after: time::Duration::seconds(-1),
         };
 
         // tat refers to the theoretical arrival time that would be expected
@@ -171,6 +171,9 @@ impl<T: store::Store> RateLimiter<T> {
 
         // TODO: what do we do about updated here? Appears to have been used
         // for a loop decision.
+        //
+        // Later: that's because it's trying to detect whether another process
+        // has modified it while the rate limit logic has been running.
         let _ = if tat_val == -1 {
             try!(self.store.set_if_not_exists_with_ttl(key, nano_seconds(new_tat), ttl))
         } else {
@@ -187,8 +190,10 @@ fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
                                    ttl: time::Duration) {
     let next = limiter.delay_variation_tolerance - ttl;
     if next > -limiter.emission_interval {
-        // TODO: check that num_seconds is actually what we want here
-        rlc.remaining = div_durations(next, limiter.emission_interval).num_seconds();
+        rlc.remaining = (next.num_microseconds().unwrap() as f64 /
+                         limiter.emission_interval
+            .num_microseconds()
+            .unwrap() as f64) as i64;
     }
     rlc.reset_after = ttl;
 }
