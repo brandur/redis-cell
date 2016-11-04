@@ -110,8 +110,7 @@ impl<T: store::Store> RateLimiter<T> {
 
         log_debug!(self.store, "");
         log_debug!(self.store, "-----");
-        log_debug!(self.store, "bucket = {}", key);
-        log_debug!(self.store, "quantity = {}", quantity);
+        log_debug!(self.store, "bucket = {} quantity = {}", key, quantity);
         log_debug!(self.store,
                    "delay_variation_tolerance = {}ms",
                    self.delay_variation_tolerance.num_milliseconds());
@@ -119,7 +118,7 @@ impl<T: store::Store> RateLimiter<T> {
                    "emission_interval = {}ms",
                    self.emission_interval.num_milliseconds());
         log_debug!(self.store,
-                   "tat increment = {}ms (emission_interval * quantity)",
+                   "tat_increment = {}ms (emission_interval * quantity)",
                    increment.num_milliseconds());
 
         // Rust actually detects that this variable can only ever be assigned
@@ -182,6 +181,7 @@ impl<T: store::Store> RateLimiter<T> {
                 break;
             }
 
+            let new_tat_ns = nanoseconds(new_tat);
             ttl = new_tat - now;
             log_debug!(self.store, "ALLOWED");
 
@@ -191,9 +191,9 @@ impl<T: store::Store> RateLimiter<T> {
             // Both of these cases are designed to work around the fact that
             // another limiter could be running in parallel.
             let updated = if tat_val == -1 {
-                try!(self.store.set_if_not_exists_with_ttl(key, nanoseconds(new_tat), ttl))
+                try!(self.store.set_if_not_exists_with_ttl(key, new_tat_ns, ttl))
             } else {
-                try!(self.store.compare_and_swap_with_ttl(key, tat_val, nanoseconds(new_tat), ttl))
+                try!(self.store.compare_and_swap_with_ttl(key, tat_val, new_tat_ns, ttl))
             };
 
             if updated {
