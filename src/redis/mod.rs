@@ -12,10 +12,15 @@ use std::iter;
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
 pub trait Command {
+    // Should return the name of the command to be registered.
     fn name(&self) -> &'static str;
 
+    // Run the command.
     fn run(&self, r: Redis, args: &[&str]) -> Result<(), ThrottleError>;
 
+    // Should return any flags to be registered with the name as a string
+    // separated list. See the Redis module API documentation for a complete
+    // list of the ones that are available.
     fn str_flags(&self) -> &'static str;
 }
 

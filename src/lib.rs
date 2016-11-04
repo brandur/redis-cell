@@ -17,22 +17,25 @@ use throttle::store;
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
 
+// ThrottleCommand provides GCRA rate limiting as a command in Redis.
 struct ThrottleCommand {
 }
 
 impl Command for ThrottleCommand {
+    // Should return the name of the command to be registered.
     fn name(&self) -> &'static str {
         "throttle"
     }
 
+    // Run the command.
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: throttle <bucket> <max_burst> <count> <period> \
+            return Err(error!("Usage: throttle <key> <max_burst> <count> <period> \
                                [<quantity>]"));
         }
 
         // the first argument is command name "throttle" (ignore it)
-        let bucket = args[1];
+        let key = args[1];
         let max_burst = try!(parse_i64(args[2]));
         let count = try!(parse_i64(args[3]));
         let period = try!(parse_i64(args[4]));
@@ -52,7 +55,7 @@ impl Command for ThrottleCommand {
                                                          max_rate: rate,
                                                      });
 
-        let (throttled, rate_limit_result) = try!(limiter.rate_limit(bucket, quantity));
+        let (throttled, rate_limit_result) = try!(limiter.rate_limit(key, quantity));
 
         // Reply with an array containing rate limiting results. Note that
         // Redis' support for interesting data types is quite weak, so we have
@@ -68,6 +71,9 @@ impl Command for ThrottleCommand {
         Ok(())
     }
 
+    // Should return any flags to be registered with the name as a string
+    // separated list. See the Redis module API documentation for a complete
+    // list of the ones that are available.
     fn str_flags(&self) -> &'static str {
         "write"
     }
