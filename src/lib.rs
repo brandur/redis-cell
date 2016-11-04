@@ -24,7 +24,7 @@ struct ThrottleCommand {
 impl Command for ThrottleCommand {
     // Should return the name of the command to be registered.
     fn name(&self) -> &'static str {
-        "throttle"
+        "th.throttle"
     }
 
     // Run the command.
