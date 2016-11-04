@@ -144,3 +144,43 @@ impl<'a> Store for InternalRedisStore<'a> {
         Ok(val)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    extern crate time;
+
+    use throttle::store::*;
+
+    #[test]
+    fn it_performs_compare_and_swap_with_ttl() {
+        let mut store = MemoryStore::new();
+
+        // First attempt obviously works.
+        let res1 = store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::zero());
+        assert_eq!(true, res1.unwrap());
+
+        // Second attempt succeeds: we use the value we just set combined with
+        // a new value.
+        let res2 = store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::zero());
+        assert_eq!(true, res2.unwrap());
+
+        // Third attempt fails: we try to overwrite using a value that is
+        // incorrect.
+        let res2 = store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::zero());
+        assert_eq!(false, res2.unwrap());
+    }
+
+    #[test]
+    fn it_performs_get_with_time() {
+        let mut store = MemoryStore::new();
+
+        let res1 = store.get_with_time("foo");
+        assert_eq!(-1, res1.unwrap().0);
+
+        // Now try setting a value.
+        let _ = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero()).unwrap();
+
+        let res2 = store.get_with_time("foo");
+        assert_eq!(123, res2.unwrap().0);
+    }
+}
