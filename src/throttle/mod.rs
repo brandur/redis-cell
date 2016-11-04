@@ -10,7 +10,7 @@ use error::ThrottleError;
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
 // operations before returning an error.
-const MAX_CAS_ATTEMPTS: i64 = 10;
+const MAX_CAS_ATTEMPTS: i64 = 5;
 
 pub struct Rate {
     pub period: time::Duration,
@@ -97,6 +97,17 @@ impl<T: store::Store> RateLimiter<T> {
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
+        let mut rlc = RateLimitResult {
+            limit: self.limit,
+            remaining: 0,
+            retry_after: time::Duration::seconds(-1),
+            reset_after: time::Duration::seconds(-1),
+        };
+
+        let increment = time::Duration::nanoseconds(self.emission_interval
+            .num_nanoseconds()
+            .unwrap() * quantity);
+
         log_debug!(self.store, "");
         log_debug!(self.store, "-----");
         log_debug!(self.store, "bucket = {}", key);
@@ -107,13 +118,9 @@ impl<T: store::Store> RateLimiter<T> {
         log_debug!(self.store,
                    "emission_interval = {}ms",
                    self.emission_interval.num_milliseconds());
-
-        let mut rlc = RateLimitResult {
-            limit: self.limit,
-            remaining: 0,
-            retry_after: time::Duration::seconds(-1),
-            reset_after: time::Duration::seconds(-1),
-        };
+        log_debug!(self.store,
+                   "tat increment = {}ms (emission_interval * quantity)",
+                   increment.num_milliseconds());
 
         // Rust actually detects that this variable can only ever be assigned
         // once despite our loops and conditions so it doesn't have to be
@@ -138,44 +145,33 @@ impl<T: store::Store> RateLimiter<T> {
             // from equally spaced requests at exactly the rate limit.
             let (tat_val, now) = try!(self.store.get_with_time(key));
 
-            let tat = if tat_val == -1 {
-                let tat = now;
-                log_debug!(self.store, "TAT is NOW: {} (-1 from store)", tat.rfc3339());
-                tat
-            } else {
-                let ns = (10 as i64).pow(9);
-                let tat = time::at(time::Timespec {
-                    sec: tat_val / ns,
-                    nsec: (tat_val % ns) as i32,
-                });
-                log_debug!(self.store,
-                           "TAT is: {} (now is {})",
-                           tat.rfc3339(),
-                           now.rfc3339());
-                tat
+            let tat = match tat_val {
+                -1 => now,
+                _ => from_nanoseconds(tat_val),
             };
-
-            let increment = time::Duration::nanoseconds(self.emission_interval
-                .num_nanoseconds()
-                .unwrap() * quantity);
             log_debug!(self.store,
-                       "TAT increment is: {}ms",
-                       increment.num_milliseconds());
+                       "tat = {} (from store = {})",
+                       tat.rfc3339(),
+                       tat_val);
 
             let new_tat = if now > tat {
                 now + increment
             } else {
                 tat + increment
             };
-            log_debug!(self.store, "New TAT is: {}", new_tat.rfc3339());
+            log_debug!(self.store, "new_tat = {}", new_tat.rfc3339());
 
             // Block the request if the next permitted time is in the future.
             let allow_at = new_tat - self.delay_variation_tolerance;
             let diff = now - allow_at;
+            log_debug!(self.store,
+                       "diff = {}ms (now - allow_at)",
+                       diff.num_milliseconds());
+
             if diff.num_seconds() < 0 {
                 log_debug!(self.store,
-                           "Next allowed request is in the future. Diff: {}",
-                           diff.num_milliseconds());
+                           "BLOCKED retry_after = {}",
+                           -diff.num_milliseconds());
 
                 if increment <= self.delay_variation_tolerance {
                     rlc.retry_after = -diff;
@@ -187,10 +183,7 @@ impl<T: store::Store> RateLimiter<T> {
             }
 
             ttl = new_tat - now;
-            log_debug!(self.store,
-                       "Allowed. New TAT: {} New TTL: {}ms",
-                       new_tat.rfc3339(),
-                       diff.num_milliseconds());
+            log_debug!(self.store, "ALLOWED");
 
             // If the key was originally missing, set it if if doesn't exist.
             // If it was there, try to compare and swap.
@@ -198,9 +191,9 @@ impl<T: store::Store> RateLimiter<T> {
             // Both of these cases are designed to work around the fact that
             // another limiter could be running in parallel.
             let updated = if tat_val == -1 {
-                try!(self.store.set_if_not_exists_with_ttl(key, nano_seconds(new_tat), ttl))
+                try!(self.store.set_if_not_exists_with_ttl(key, nanoseconds(new_tat), ttl))
             } else {
-                try!(self.store.compare_and_swap_with_ttl(key, tat_val, nano_seconds(new_tat), ttl))
+                try!(self.store.compare_and_swap_with_ttl(key, tat_val, nanoseconds(new_tat), ttl))
             };
 
             if updated {
@@ -225,6 +218,12 @@ impl<T: store::Store> RateLimiter<T> {
         }
         rlc.reset_after = ttl;
 
+        log_debug!(self.store,
+                   "limit = {} remaining = {}",
+                   self.limit,
+                   rlc.remaining);
+        log_debug!(self.store, "reset_after = {}ms", ttl.num_milliseconds());
+
         Ok((limited, rlc))
     }
 }
@@ -238,7 +237,15 @@ fn div_durations(x: time::Duration, y: time::Duration) -> time::Duration {
     time::Duration::nanoseconds(x.num_nanoseconds().unwrap() / y.num_nanoseconds().unwrap())
 }
 
-fn nano_seconds(x: time::Tm) -> i64 {
+fn from_nanoseconds(x: i64) -> time::Tm {
+    let ns = (10 as i64).pow(9);
+    time::at(time::Timespec {
+        sec: x / ns,
+        nsec: (x % ns) as i32,
+    })
+}
+
+fn nanoseconds(x: time::Tm) -> i64 {
     let ts = x.to_timespec();
     ts.sec * (10 as i64).pow(9) + (ts.nsec as i64)
 }
