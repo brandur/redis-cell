@@ -46,6 +46,10 @@ impl Redis {
         // We use a "format" string to tell redis what types we're passing in.
         // Currently we just pass everything as a string so this is just the
         // character "s" repeated as many times as we have arguments.
+        //
+        // It would be nice to start passing some parameters as their actual
+        // type (for example, i64s as long longs), but Redis stringifies these
+        // on the other end anyway so the practical benefit will be minimal.
         let format: String = iter::repeat("s").take(args.len()).collect();
 
         let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
@@ -241,9 +245,9 @@ fn manifest_redis_string(redis_str: *mut raw::RedisModuleString) -> Result<Strin
     from_byte_string(bytes, length)
 }
 
-pub fn parse_args(argv: *mut *mut raw::RedisModuleString,
-                  argc: c_int)
-                  -> Result<Vec<String>, ThrottleError> {
+fn parse_args(argv: *mut *mut raw::RedisModuleString,
+              argc: c_int)
+              -> Result<Vec<String>, ThrottleError> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str = unsafe { *argv.offset(i as isize) };
