@@ -12,7 +12,9 @@ pub trait Store {
                                  ttl: time::Duration)
                                  -> Result<bool, ThrottleError>;
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError>;
+    fn get_with_time(&self,
+                     key: &str)
+                     -> Result<(i64, time::Tm), ThrottleError>;
 
     fn log_debug(&self, message: &str);
 
@@ -60,7 +62,9 @@ impl Store for MemoryStore {
         Ok(true)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+    fn get_with_time(&self,
+                     key: &str)
+                     -> Result<(i64, time::Tm), ThrottleError> {
         match self.map.get(key) {
             Some(n) => Ok((*n, time::now_utc())),
             None => Ok((-1, time::now_utc())),
@@ -116,7 +120,9 @@ impl<'a> Store for InternalRedisStore<'a> {
             // Still the old value: perform the swap.
             redis::Reply::Integer(n) if n == old => {
                 if ttl.num_seconds() > 1 {
-                    try!(self.r.setex(key, ttl.num_seconds(), new.to_string().as_str()));
+                    try!(self.r.setex(key,
+                                      ttl.num_seconds(),
+                                      new.to_string().as_str()));
                 } else {
                     try!(self.r.set(key, new.to_string().as_str()));
                 }
@@ -132,14 +138,20 @@ impl<'a> Store for InternalRedisStore<'a> {
         }
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+    fn get_with_time(&self,
+                     key: &str)
+                     -> Result<(i64, time::Tm), ThrottleError> {
         // TODO: currently leveraging that CommandError and ThrottleError are the
         // same thing, but we should probably reconcile this.
         let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
             redis::Reply::Nil => Ok((-1, time::now_utc())),
             redis::Reply::Integer(n) => Ok((n, time::now_utc())),
-            x => Err(error!("Found non-integer in key: {} (type: {:?})", key, x)),
+            x => {
+                Err(error!("Found non-integer in key: {} (type: {:?})",
+                           key,
+                           x))
+            }
         }
     }
 
@@ -172,17 +184,26 @@ mod tests {
         let mut store = MemoryStore::new();
 
         // First attempt obviously works.
-        let res1 = store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::zero());
+        let res1 = store.compare_and_swap_with_ttl("foo",
+                                                   123,
+                                                   124,
+                                                   time::Duration::zero());
         assert_eq!(true, res1.unwrap());
 
         // Second attempt succeeds: we use the value we just set combined with
         // a new value.
-        let res2 = store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo",
+                                                   124,
+                                                   125,
+                                                   time::Duration::zero());
         assert_eq!(true, res2.unwrap());
 
         // Third attempt fails: we try to overwrite using a value that is
         // incorrect.
-        let res2 = store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo",
+                                                   123,
+                                                   126,
+                                                   time::Duration::zero());
         assert_eq!(false, res2.unwrap());
     }
 
@@ -194,7 +215,11 @@ mod tests {
         assert_eq!(-1, res1.unwrap().0);
 
         // Now try setting a value.
-        let _ = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero()).unwrap();
+        let _ =
+            store.set_if_not_exists_with_ttl("foo",
+                                            123,
+                                            time::Duration::zero())
+                .unwrap();
 
         let res2 = store.get_with_time("foo");
         assert_eq!(123, res2.unwrap().0);
@@ -204,10 +229,16 @@ mod tests {
     fn it_performs_set_if_not_exists_with_ttl() {
         let mut store = MemoryStore::new();
 
-        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res1 =
+            store.set_if_not_exists_with_ttl("foo",
+                                             123,
+                                             time::Duration::zero());
         assert_eq!(true, res1.unwrap());
 
-        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res2 =
+            store.set_if_not_exists_with_ttl("foo",
+                                             123,
+                                             time::Duration::zero());
         assert_eq!(false, res2.unwrap());
     }
 }
