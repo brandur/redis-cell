@@ -231,7 +231,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
                    "retry_after = {}ms",
                    rlc.retry_after.num_milliseconds());
         log_debug!(self.store,
-                   "reset_after = {}ms",
+                   "reset_after = {}ms (ttl)",
                    rlc.reset_after.num_milliseconds());
     }
 
@@ -329,21 +329,49 @@ mod tests {
 
         let cases = [
             //
-            // test case #, now, volume, remaining, reset_after, retry_after, limited
+            // (test case #, now, volume, remaining, reset_after, retry_after, limited)
             //
 
             // You can never make a request larger than the maximum.
-            RateLimitCase::new(0, start, 6, 5, time::Duration::zero(), time::Duration::seconds(-1), true),
+            RateLimitCase::new(0, start, 6, 5, time::Duration::zero(),
+                time::Duration::seconds(-1), true),
 
             // Rate limit normal requests appropriately.
-            RateLimitCase::new(1, start, 1, 4, time::Duration::seconds(1), time::Duration::seconds(-1), false),
-            RateLimitCase::new(2, start, 1, 3, time::Duration::seconds(2), time::Duration::seconds(-1), false),
-            RateLimitCase::new(3, start, 1, 2, time::Duration::seconds(3), time::Duration::seconds(-1), false),
-            RateLimitCase::new(4, start, 1, 1, time::Duration::seconds(4), time::Duration::seconds(-1), false),
-            RateLimitCase::new(5, start, 1, 0, time::Duration::seconds(5), time::Duration::seconds(-1), false),
-            RateLimitCase::new(6, start, 1, 0, time::Duration::seconds(5), time::Duration::seconds(1), true),
+            RateLimitCase::new(1, start, 1, 4, time::Duration::seconds(1),
+                time::Duration::seconds(-1), false),
+            RateLimitCase::new(2, start, 1, 3, time::Duration::seconds(2),
+                time::Duration::seconds(-1), false),
+            RateLimitCase::new(3, start, 1, 2, time::Duration::seconds(3),
+                time::Duration::seconds(-1), false),
+            RateLimitCase::new(4, start, 1, 1, time::Duration::seconds(4),
+                time::Duration::seconds(-1), false),
+            RateLimitCase::new(5, start, 1, 0, time::Duration::seconds(5),
+                time::Duration::seconds(-1), false),
+            RateLimitCase::new(6, start, 1, 0, time::Duration::seconds(5),
+                time::Duration::seconds(1), true),
 
-            RateLimitCase::new(7, start + time::Duration::milliseconds(3000), 1, 2, time::Duration::milliseconds(3000), time::Duration::seconds(-1), false),
+            RateLimitCase::new(7, start + time::Duration::milliseconds(3000), 1, 2,
+                time::Duration::milliseconds(3000), time::Duration::seconds(-1), false),
+            RateLimitCase::new(8, start + time::Duration::milliseconds(3100), 1, 1,
+                time::Duration::milliseconds(3900), time::Duration::seconds(-1), false),
+            RateLimitCase::new(9, start + time::Duration::milliseconds(4000), 1, 1,
+                time::Duration::milliseconds(4000), time::Duration::seconds(-1), false),
+            RateLimitCase::new(10, start + time::Duration::milliseconds(8000), 1, 4,
+                time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
+            RateLimitCase::new(11, start + time::Duration::milliseconds(9500), 1, 4,
+                time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
+
+            // Zero-volume request just peeks at the state.
+            RateLimitCase::new(12, start + time::Duration::milliseconds(9500), 0, 4,
+                time::Duration::seconds(1), time::Duration::seconds(-1), false),
+
+            // High-volume request uses up more of the limit.
+            RateLimitCase::new(13, start + time::Duration::milliseconds(9500), 2, 2,
+                time::Duration::seconds(3), time::Duration::seconds(-1), false),
+
+            // Large requests cannot exceed limits
+            RateLimitCase::new(14, start + time::Duration::milliseconds(9500), 5, 2,
+                time::Duration::seconds(3), time::Duration::seconds(3), true),
         ];
 
         for case in cases.iter() {
@@ -363,19 +391,6 @@ mod tests {
             assert_eq!(case.reset_after, results.reset_after);
             assert_eq!(case.retry_after, results.retry_after);
         }
-
-
-        // 8:  {start.Add(3100 * time.Millisecond), 1, 1, 3900 * time.Millisecond, -1, false},
-        // 9:  {start.Add(4000 * time.Millisecond), 1, 1, 4000 * time.Millisecond, -1, false},
-        // 10: {start.Add(8000 * time.Millisecond), 1, 4, 1000 * time.Millisecond, -1, false},
-        // 11: {start.Add(9500 * time.Millisecond), 1, 4, 1000 * time.Millisecond, -1, false},
-        // Zero-volume request just peeks at the state
-        // 12: {start.Add(9500 * time.Millisecond), 0, 4, time.Second, -1, false},
-        // High-volume request uses up more of the limit
-        // 13: {start.Add(9500 * time.Millisecond), 2, 2, 3 * time.Second, -1, false},
-        // Large requests cannot exceed limits
-        // 14: {start.Add(9500 * time.Millisecond), 5, 2, 3 * time.Second, 3 * time.Second, true},
-        //
     }
 
     #[derive(Debug)]
