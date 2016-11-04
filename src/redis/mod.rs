@@ -12,7 +12,11 @@ use std::iter;
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
 pub trait Command {
+    fn name(&self) -> &'static str;
+
     fn run(&self, r: Redis, args: &[&str]) -> Result<bool, ThrottleError>;
+
+    fn str_flags(&self) -> &'static str;
 }
 
 impl Command {

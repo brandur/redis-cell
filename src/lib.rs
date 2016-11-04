@@ -10,6 +10,7 @@ pub mod throttle;
 
 use error::ThrottleError;
 use libc::c_int;
+use redis::Command;
 use redis::raw;
 use throttle::store;
 
@@ -19,17 +20,11 @@ const MODULE_VERSION: c_int = 1;
 struct ThrottleCommand {
 }
 
-impl ThrottleCommand {
-    fn name() -> &'static str {
+impl Command for ThrottleCommand {
+    fn name(&self) -> &'static str {
         "throttle"
     }
 
-    fn str_flags() -> &'static str {
-        "readonly"
-    }
-}
-
-impl redis::Command for ThrottleCommand {
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<bool, ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
             return Err(error!("Usage: throttle <bucket> <max_burst> <count> <period> \
@@ -72,6 +67,10 @@ impl redis::Command for ThrottleCommand {
 
         Ok(true)
     }
+
+    fn str_flags(&self) -> &'static str {
+        "write"
+    }
 }
 
 #[allow(non_snake_case)]
@@ -81,7 +80,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut raw::RedisModuleCtx,
                                         argv: *mut *mut raw::RedisModuleString,
                                         argc: c_int)
                                         -> raw::Status {
-    redis::Command::harness(&ThrottleCommand {}, ctx, argv, argc)
+    Command::harness(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]
@@ -98,10 +97,11 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
         return raw::Status::Err;
     }
 
+    let command = ThrottleCommand {};
     if raw::create_command(ctx,
-                           format!("{}\0", ThrottleCommand::name()).as_ptr(),
+                           format!("{}\0", command.name()).as_ptr(),
                            Some(Throttle_RedisCommand),
-                           format!("{}\0", ThrottleCommand::str_flags()).as_ptr(),
+                           format!("{}\0", command.str_flags()).as_ptr(),
                            0,
                            0,
                            0) == raw::Status::Err {
