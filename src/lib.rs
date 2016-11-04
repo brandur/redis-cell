@@ -11,7 +11,7 @@ pub mod throttle;
 use error::ThrottleError;
 use libc::c_int;
 use redis::raw;
-use throttle::store::RedisStore;
+use throttle::store;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;
@@ -49,7 +49,7 @@ impl redis::Command for ThrottleCommand {
         // We reinitialize a new store and rate limiter every time this command
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
-        let store = RedisStore::new(&r);
+        let store = store::InternalRedisStore::new(&r);
         let rate = throttle::Rate { period: actions_per_second(count, period) };
         let limiter = throttle::RateLimiter::new(store,
                                                  throttle::RateQuota {

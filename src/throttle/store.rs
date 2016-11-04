@@ -22,17 +22,21 @@ pub trait Store {
                                   -> Result<bool, ThrottleError>;
 }
 
-pub struct RedisStore<'a> {
+/// InternalRedisStore is a store implementation that uses Redis module APIs in
+/// that it's designed to run from within a Redis runtime. This allows us to
+/// cut some corners around atomicity because we can safety assume that all
+/// operations will be atomic.
+pub struct InternalRedisStore<'a> {
     r: &'a redis::Redis,
 }
 
-impl<'a> RedisStore<'a> {
-    pub fn new(r: &'a redis::Redis) -> RedisStore<'a> {
-        RedisStore { r: r }
+impl<'a> InternalRedisStore<'a> {
+    pub fn new(r: &'a redis::Redis) -> InternalRedisStore<'a> {
+        InternalRedisStore { r: r }
     }
 }
 
-impl<'a> Store for RedisStore<'a> {
+impl<'a> Store for InternalRedisStore<'a> {
     fn compare_and_swap_with_ttl(&self,
                                  key: &str,
                                  old: i64,
