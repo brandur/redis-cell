@@ -64,7 +64,7 @@ impl redis::Command for ThrottleCommand {
         // to jam a few square pegs into round holes. It's a little messy, but
         // the interface comes out as pretty workable.
         try!(r.reply_array(5));
-        try!(r.reply_integer(if !throttled { 1 } else { 0 }));
+        try!(r.reply_integer(if throttled { 1 } else { 0 }));
         try!(r.reply_integer(rate_limit_result.limit));
         try!(r.reply_integer(rate_limit_result.remaining));
         try!(r.reply_integer(rate_limit_result.retry_after.num_seconds()));
