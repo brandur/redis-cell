@@ -4,7 +4,18 @@ use error::ThrottleError;
 use redis;
 use std::collections::HashMap;
 
+/// Store exposes the atomic data store operations that the GCRA rate limiter
+/// needs to function correctly.
+///
+/// Note that because the default mode for this library is to run within Redis
+/// (making every operation atomic by default), the encapsulation is not
+/// strictly needed. However, it's written to be generic enough that a
+/// out-of-Redis Store could be written and have the rate limiter still work
+/// properly.
 pub trait Store {
+    /// Compares the value at the given key with a known old value and swaps it
+    /// for a new value if and only if they're equal. Also sets the key's TTL
+    /// until it expires.
     fn compare_and_swap_with_ttl(&mut self,
                                  key: &str,
                                  old: i64,
@@ -12,12 +23,19 @@ pub trait Store {
                                  ttl: time::Duration)
                                  -> Result<bool, ThrottleError>;
 
+    /// Gets the given key's value and the current time as dictated by the
+    /// store (this is done so that rate limiters running on a variety of
+    /// different nodes can operate with a consistent clock instead of using
+    /// their own). If the key was unset, -1 is returned.
     fn get_with_time(&self,
                      key: &str)
                      -> Result<(i64, time::Tm), ThrottleError>;
 
+    /// Logs a debug message to the data store.
     fn log_debug(&self, message: &str);
 
+    /// Sets the given key to the given value if and only if it doesn't already
+    /// exit. Whether or not the key existed previously it's given a new TTL.
     fn set_if_not_exists_with_ttl(&mut self,
                                   key: &str,
                                   value: i64,
@@ -25,6 +43,11 @@ pub trait Store {
                                   -> Result<bool, ThrottleError>;
 }
 
+/// MemoryStore is a simple implementation of Store that persists data in an
+/// in-memory HashMap.
+///
+/// Note that the implementation is currently not thread-safe and will need a
+/// mutex added if it's ever used for anything serious.
 pub struct MemoryStore {
     map: HashMap<String, i64>,
     verbose: bool,
