@@ -14,7 +14,7 @@ use std::iter;
 pub trait Command {
     fn name(&self) -> &'static str;
 
-    fn run(&self, r: Redis, args: &[&str]) -> Result<bool, ThrottleError>;
+    fn run(&self, r: Redis, args: &[&str]) -> Result<(), ThrottleError>;
 
     fn str_flags(&self) -> &'static str;
 }
@@ -172,19 +172,17 @@ impl Redis {
     ///
     /// Used by invoking once with the expected length and then calling any
     /// combination of the other reply_* methods exactly that number of times.
-    ///
-    /// The success return value can be safely ignored.
-    pub fn reply_array(&self, len: i64) -> Result<bool, ThrottleError> {
+    pub fn reply_array(&self, len: i64) -> Result<(), ThrottleError> {
         handle_status(raw::reply_with_array(self.ctx, len as c_long),
                       "Could not reply with long")
     }
 
-    pub fn reply_integer(&self, integer: i64) -> Result<bool, ThrottleError> {
+    pub fn reply_integer(&self, integer: i64) -> Result<(), ThrottleError> {
         handle_status(raw::reply_with_long_long(self.ctx, integer as c_longlong),
                       "Could not reply with longlong")
     }
 
-    pub fn reply_string(&self, message: &str) -> Result<bool, ThrottleError> {
+    pub fn reply_string(&self, message: &str) -> Result<(), ThrottleError> {
         let redis_str =
             raw::create_string(self.ctx, format!("{}\0", message).as_ptr(), message.len());
         let res = handle_status(raw::reply_with_string(self.ctx, redis_str),
@@ -193,12 +191,12 @@ impl Redis {
         res
     }
 
-    pub fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
+    pub fn set(&self, key: &str, val: &str) -> Result<(), ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
         parse_simple_string(res)
     }
 
-    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
+    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), ThrottleError> {
         let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
         parse_simple_string(res)
     }
@@ -221,9 +219,9 @@ pub enum Reply {
     Unknown,
 }
 
-fn handle_status(status: raw::Status, message: &str) -> Result<bool, ThrottleError> {
+fn handle_status(status: raw::Status, message: &str) -> Result<(), ThrottleError> {
     match status {
-        raw::Status::Ok => Ok(true),
+        raw::Status::Ok => Ok(()),
         raw::Status::Err => Err(error!(message)),
     }
 }
@@ -292,11 +290,11 @@ fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
     }
 }
 
-fn parse_simple_string(reply: Reply) -> Result<bool, ThrottleError> {
+fn parse_simple_string(reply: Reply) -> Result<(), ThrottleError> {
     match reply {
         // may also return a Redis null, but not with the parameters that
         // we currently allow
-        Reply::String(ref s) if s.as_str() == "OK" => Ok(true),
+        Reply::String(ref s) if s.as_str() == "OK" => Ok(()),
         r => Err(error!("Command returned non-string value (type was {:?}).", r)),
     }
 }

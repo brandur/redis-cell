@@ -25,7 +25,7 @@ impl Command for ThrottleCommand {
         "throttle"
     }
 
-    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<bool, ThrottleError> {
+    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
             return Err(error!("Usage: throttle <bucket> <max_burst> <count> <period> \
                                [<quantity>]"));
@@ -65,7 +65,7 @@ impl Command for ThrottleCommand {
         try!(r.reply_integer(rate_limit_result.retry_after.num_seconds()));
         try!(r.reply_integer(rate_limit_result.reset_after.num_seconds()));
 
-        Ok(true)
+        Ok(())
     }
 
     fn str_flags(&self) -> &'static str {
