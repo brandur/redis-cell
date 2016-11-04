@@ -50,7 +50,7 @@ impl redis::Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let store = store::InternalRedisStore::new(&r);
-        let rate = throttle::Rate { period: actions_per_second(count, period) };
+        let rate = throttle::Rate::per_period(count, time::Duration::seconds(period));
         let mut limiter = throttle::RateLimiter::new(store,
                                                      throttle::RateQuota {
                                                          max_burst: max_burst,
@@ -109,13 +109,6 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
     }
 
     return raw::Status::Ok;
-}
-
-/// Produces a time duration for some number of actions per second. For
-/// example, if we wanted to have 10 actions every 2 seconds, the period
-/// produced would be 200 ms.
-fn actions_per_second(count: i64, period: i64) -> time::Duration {
-    time::Duration::milliseconds(((period as f64) / (count as f64) * 1000.0) as i64)
 }
 
 fn parse_i64(arg: &str) -> Result<i64, ThrottleError> {

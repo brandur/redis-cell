@@ -31,6 +31,15 @@ impl Rate {
         Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::minutes(n) })
     }
 
+    /// Produces a rate for some number of actions per second. For example, if
+    /// we wanted to have 10 actions every 2 seconds, the period produced would
+    /// be 200 ms.
+    pub fn per_period(n: i64, period: time::Duration) -> Rate {
+        let ns: i64 = period.num_nanoseconds().unwrap();
+        let period = time::Duration::nanoseconds(((ns as f64) / (n as f64)) as i64);
+        Rate { period: period }
+    }
+
     pub fn per_second(n: i64) -> Rate {
         Rate::per_time(n, |n: i64| -> time::Duration { time::Duration::seconds(n) })
     }
@@ -287,6 +296,12 @@ mod tests {
     fn it_creates_rates_from_minutes() {
         assert_eq!(Rate { period: time::Duration::seconds(10) },
                    Rate::per_minute(6))
+    }
+
+    #[test]
+    fn it_creates_rates_from_periods() {
+        assert_eq!(Rate { period: time::Duration::seconds(20) },
+                   Rate::per_period(6, time::Duration::minutes(2)))
     }
 
     #[test]
