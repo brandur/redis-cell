@@ -65,8 +65,8 @@ pub struct RateLimitResult {
     pub retry_after: time::Duration,
 }
 
-pub struct RateLimiter<T: store::Store> {
-    pub store: T,
+pub struct RateLimiter<'a, T: 'a + store::Store> {
+    pub store: &'a mut T,
 
     /// Think of the DVT as our flexibility: how far can you deviate from the
     /// nominal equally spaced schedule? If you like leaky buckets, think about
@@ -81,8 +81,8 @@ pub struct RateLimiter<T: store::Store> {
     limit: i64,
 }
 
-impl<T: store::Store> RateLimiter<T> {
-    pub fn new(store: T, quota: RateQuota) -> RateLimiter<T> {
+impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
+    pub fn new(store: &'a mut T, quota: RateQuota) -> RateLimiter<'a, T> {
         RateLimiter {
             delay_variation_tolerance: time::Duration::nanoseconds(quota.max_rate
                 .period
@@ -169,7 +169,7 @@ impl<T: store::Store> RateLimiter<T> {
 
             if diff.num_seconds() < 0 {
                 log_debug!(self.store,
-                           "BLOCKED retry_after = {}",
+                           "BLOCKED retry_after = {}ms",
                            -diff.num_milliseconds());
 
                 if increment <= self.delay_variation_tolerance {
@@ -238,7 +238,8 @@ impl<T: store::Store> RateLimiter<T> {
     fn log_start(&self, key: &str, quantity: i64, increment: time::Duration) {
         log_debug!(self.store, "");
         log_debug!(self.store, "-----");
-        log_debug!(self.store, "bucket = {} quantity = {}", key, quantity);
+        log_debug!(self.store, "key = {}", key);
+        log_debug!(self.store, "quantity = {}", quantity);
         log_debug!(self.store,
                    "delay_variation_tolerance = {}ms",
                    self.delay_variation_tolerance.num_milliseconds());
@@ -279,6 +280,7 @@ fn nanoseconds(x: time::Tm) -> i64 {
 mod tests {
     extern crate time;
 
+    use error::ThrottleError;
     use throttle::*;
 
     #[test]
@@ -310,6 +312,165 @@ mod tests {
                    Rate::per_second(5))
     }
 
+    // Skip rustfmt so we don't mangle our big test case array below which is
+    // already hard enough to read.
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     #[test]
-    fn it_rate_limits() {}
+    fn it_rate_limits() {
+        let limit = 5;
+        let quota = RateQuota {
+            max_burst: limit - 1,
+            max_rate: Rate::per_second(1),
+        };
+        let start = time::now_utc();
+        let mut memory_store = store::MemoryStore::new_verbose();
+        let mut test_store = TestStore::new(&mut memory_store);
+        let mut limiter = RateLimiter::new(&mut test_store, quota);
+
+        let cases = [
+            //
+            // test case #, now, volume, remaining, reset_after, retry_after, limited
+            //
+
+            // You can never make a request larger than the maximum.
+            RateLimitCase::new(0, start, 6, 5, time::Duration::zero(), time::Duration::seconds(-1), true),
+
+            // Rate limit normal requests appropriately.
+            RateLimitCase::new(1, start, 1, 4, time::Duration::seconds(1), time::Duration::seconds(-1), false),
+            RateLimitCase::new(2, start, 1, 3, time::Duration::seconds(2), time::Duration::seconds(-1), false),
+            RateLimitCase::new(3, start, 1, 2, time::Duration::seconds(3), time::Duration::seconds(-1), false),
+            RateLimitCase::new(4, start, 1, 1, time::Duration::seconds(4), time::Duration::seconds(-1), false),
+            RateLimitCase::new(5, start, 1, 0, time::Duration::seconds(5), time::Duration::seconds(-1), false),
+            RateLimitCase::new(6, start, 1, 0, time::Duration::seconds(5), time::Duration::seconds(1), true),
+
+            RateLimitCase::new(7, start + time::Duration::milliseconds(3000), 1, 2, time::Duration::milliseconds(3000), time::Duration::seconds(-1), false),
+        ];
+
+        for case in cases.iter() {
+            println!("starting test case = {:?}", case.num);
+            println!("{:?}", case);
+
+            //test_store.clock = case.now;
+            limiter.store.set_clock(case.now);
+            println!("store clock = {}", case.now.rfc3339());
+            let (limited, results) = limiter.rate_limit("foo", case.volume).unwrap();
+
+            println!("limited = {:?}", limited);
+            println!("{:?}", results);
+            println!("");
+
+            assert_eq!(case.limited, limited);
+            assert_eq!(limit, results.limit);
+            assert_eq!(case.remaining, results.remaining);
+            assert_eq!(case.reset_after, results.reset_after);
+            assert_eq!(case.retry_after, results.retry_after);
+        }
+
+
+        // 8:  {start.Add(3100 * time.Millisecond), 1, 1, 3900 * time.Millisecond, -1, false},
+        // 9:  {start.Add(4000 * time.Millisecond), 1, 1, 4000 * time.Millisecond, -1, false},
+        // 10: {start.Add(8000 * time.Millisecond), 1, 4, 1000 * time.Millisecond, -1, false},
+        // 11: {start.Add(9500 * time.Millisecond), 1, 4, 1000 * time.Millisecond, -1, false},
+        // Zero-volume request just peeks at the state
+        // 12: {start.Add(9500 * time.Millisecond), 0, 4, time.Second, -1, false},
+        // High-volume request uses up more of the limit
+        // 13: {start.Add(9500 * time.Millisecond), 2, 2, 3 * time.Second, -1, false},
+        // Large requests cannot exceed limits
+        // 14: {start.Add(9500 * time.Millisecond), 5, 2, 3 * time.Second, 3 * time.Second, true},
+        //
+    }
+
+    #[derive(Debug)]
+    #[derive(PartialEq)]
+    struct RateLimitCase {
+        num: i64,
+        now: time::Tm,
+        volume: i64,
+        remaining: i64,
+        reset_after: time::Duration,
+        retry_after: time::Duration,
+        limited: bool,
+    }
+
+    impl RateLimitCase {
+        fn new(num: i64,
+               now: time::Tm,
+               volume: i64,
+               remaining: i64,
+               reset_after: time::Duration,
+               retry_after: time::Duration,
+               limited: bool)
+               -> RateLimitCase {
+            return RateLimitCase {
+                num: num,
+                now: now,
+                volume: volume,
+                remaining: remaining,
+                reset_after: reset_after,
+                retry_after: retry_after,
+                limited: limited,
+            };
+        }
+    }
+
+    /// TestStore is a Store implementation that wraps a MemoryStore and allows
+    /// us to tweak certain behavior, like for example setting the effective
+    /// system clock.
+    struct TestStore<'a> {
+        clock: time::Tm,
+        fail_updates: bool,
+        store: &'a mut store::MemoryStore,
+    }
+
+    impl<'a> TestStore<'a> {
+        fn new(store: &'a mut store::MemoryStore) -> TestStore {
+            TestStore {
+                clock: time::empty_tm(),
+                fail_updates: false,
+                store: store,
+            }
+        }
+
+        fn set_clock(&mut self, clock: time::Tm) {
+            println!("setting clock to = {}", clock.rfc3339());
+            self.clock = clock;
+        }
+    }
+
+    impl<'a> store::Store for TestStore<'a> {
+        fn compare_and_swap_with_ttl(&mut self,
+                                     key: &str,
+                                     old: i64,
+                                     new: i64,
+                                     ttl: time::Duration)
+                                     -> Result<bool, ThrottleError> {
+            if self.fail_updates {
+                Ok(false)
+            } else {
+                self.store.compare_and_swap_with_ttl(key, old, new, ttl)
+            }
+        }
+
+        fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+            let tup = try!(self.store.get_with_time(key));
+            println!("get with time = {} {}", tup.0, self.clock.rfc3339());
+            Ok((tup.0, self.clock))
+        }
+
+        fn log_debug(&self, message: &str) {
+            self.store.log_debug(message)
+        }
+
+        fn set_if_not_exists_with_ttl(&mut self,
+                                      key: &str,
+                                      value: i64,
+                                      ttl: time::Duration)
+                                      -> Result<bool, ThrottleError> {
+            if self.fail_updates {
+                Ok(false)
+            } else {
+                self.store.set_if_not_exists_with_ttl(key, value, ttl)
+            }
+        }
+    }
 }

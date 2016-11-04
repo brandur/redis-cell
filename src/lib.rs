@@ -49,9 +49,9 @@ impl redis::Command for ThrottleCommand {
         // We reinitialize a new store and rate limiter every time this command
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
-        let store = store::InternalRedisStore::new(&r);
+        let mut store = store::InternalRedisStore::new(&r);
         let rate = throttle::Rate::per_period(count, time::Duration::seconds(period));
-        let mut limiter = throttle::RateLimiter::new(store,
+        let mut limiter = throttle::RateLimiter::new(&mut store,
                                                      throttle::RateQuota {
                                                          max_burst: max_burst,
                                                          max_rate: rate,

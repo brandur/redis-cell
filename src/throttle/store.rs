@@ -25,11 +25,22 @@ pub trait Store {
 
 pub struct MemoryStore {
     map: HashMap<String, i64>,
+    verbose: bool,
 }
 
 impl MemoryStore {
     pub fn new() -> MemoryStore {
-        MemoryStore { map: HashMap::new() }
+        MemoryStore {
+            map: HashMap::new(),
+            verbose: false,
+        }
+    }
+
+    pub fn new_verbose() -> MemoryStore {
+        MemoryStore {
+            map: HashMap::new(),
+            verbose: true,
+        }
     }
 }
 
@@ -56,7 +67,11 @@ impl Store for MemoryStore {
         }
     }
 
-    fn log_debug(&self, _: &str) {}
+    fn log_debug(&self, message: &str) {
+        if self.verbose {
+            println!("memory_store: {}", message);
+        }
+    }
 
     fn set_if_not_exists_with_ttl(&mut self,
                                   key: &str,
@@ -144,6 +159,7 @@ impl<'a> Store for InternalRedisStore<'a> {
         Ok(val)
     }
 }
+
 
 #[cfg(test)]
 mod tests {
