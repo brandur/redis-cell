@@ -183,4 +183,15 @@ mod tests {
         let res2 = store.get_with_time("foo");
         assert_eq!(123, res2.unwrap().0);
     }
+
+    #[test]
+    fn it_performs_set_if_not_exists_with_ttl() {
+        let mut store = MemoryStore::new();
+
+        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        assert_eq!(true, res1.unwrap());
+
+        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        assert_eq!(false, res2.unwrap());
+    }
 }
