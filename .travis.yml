@@ -1,0 +1,21 @@
+language: rust
+
+# magic word to use faster/newer container-based architecture
+sudo: false
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  allow_failures:
+    - rust: nightly
+
+before_script: (cargo install rustfmt || true)
+
+script:
+  - export PATH=$PATH:~/.cargo/bin &&
+    cargo fmt -- --write-mode=diff &&
+    cargo build --verbose &&
+    cargo test --verbose
