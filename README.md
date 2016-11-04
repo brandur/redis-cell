@@ -1,4 +1,4 @@
-# redis-throttle
+# redis-throttle [![Build Status](https://travis-ci.org/brandur/redis-throttle.svg?branch=master)](https://travis-ci.org/brandur/redis-throttle)
 
 A Redis module that provides rate limiting in Redis as a single command.
 Implements the fairly sophisticated [genetic cell rate algorithm][gcra] (GCRA)
