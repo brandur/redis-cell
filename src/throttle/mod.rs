@@ -205,7 +205,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
             if i > MAX_CAS_ATTEMPTS {
                 return Err(error!("Failed to update rate limit after \
                                                            {} attempts",
-                                  i));
+                                  MAX_CAS_ATTEMPTS));
             }
         }
 
@@ -281,6 +281,7 @@ mod tests {
     extern crate time;
 
     use error::ThrottleError;
+    use std::error::Error;
     use throttle::*;
 
     #[test]
@@ -391,6 +392,24 @@ mod tests {
             assert_eq!(case.reset_after, results.reset_after);
             assert_eq!(case.retry_after, results.retry_after);
         }
+    }
+
+    #[test]
+    fn it_handles_rate_limit_update_failures() {
+        let quota = RateQuota {
+            max_burst: 1,
+            max_rate: Rate::per_second(1),
+        };
+        let mut memory_store = store::MemoryStore::new_verbose();
+        let mut test_store = TestStore::new(&mut memory_store);
+        test_store.fail_updates = true;
+
+        let mut limiter = RateLimiter::new(&mut test_store, quota);
+
+        let err = error!("Failed to update rate limit after 5 attempts");
+
+        assert_eq!(err.description(),
+                   limiter.rate_limit("foo", 1).unwrap_err().description());
     }
 
     #[derive(Debug)]
