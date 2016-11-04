@@ -51,7 +51,7 @@ impl Redis {
         let format: String = iter::repeat("s").take(args.len()).collect();
 
         let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
-            .map(|a| raw::RedisModule_CreateString(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
+            .map(|a| raw::create_string(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
             .collect();
 
         // One would hope that there's a better way to handle a va_list than
@@ -64,35 +64,35 @@ impl Redis {
                 // reply with a -1 "unknown" to all calls). This is still
                 // unexplained and I need to do more legwork in understanding
                 // this.
-                raw::call1::RedisModule_Call(self.ctx,
-                                             format!("{}\0", command).as_ptr(),
-                                             format!("{}\0", format).as_ptr(),
-                                             terminated_args[0])
+                raw::call1::call(self.ctx,
+                                 format!("{}\0", command).as_ptr(),
+                                 format!("{}\0", format).as_ptr(),
+                                 terminated_args[0])
             }
             2 => {
-                raw::call2::RedisModule_Call(self.ctx,
-                                             format!("{}\0", command).as_ptr(),
-                                             format!("{}\0", format).as_ptr(),
-                                             terminated_args[0],
-                                             terminated_args[1])
+                raw::call2::call(self.ctx,
+                                 format!("{}\0", command).as_ptr(),
+                                 format!("{}\0", format).as_ptr(),
+                                 terminated_args[0],
+                                 terminated_args[1])
             }
             3 => {
-                raw::call3::RedisModule_Call(self.ctx,
-                                             format!("{}\0", command).as_ptr(),
-                                             format!("{}\0", format).as_ptr(),
-                                             terminated_args[0],
-                                             terminated_args[1],
-                                             terminated_args[2])
+                raw::call3::call(self.ctx,
+                                 format!("{}\0", command).as_ptr(),
+                                 format!("{}\0", format).as_ptr(),
+                                 terminated_args[0],
+                                 terminated_args[1],
+                                 terminated_args[2])
             }
             _ => return Err(error!("Can't support that many CALL arguments")),
         };
 
         for redis_str in &terminated_args {
-            raw::RedisModule_FreeString(self.ctx, *redis_str);
+            raw::free_string(self.ctx, *redis_str);
         }
 
         let reply_res = manifest_redis_reply(raw_reply);
-        raw::RedisModule_FreeCallReply(raw_reply);
+        raw::free_call_reply(raw_reply);
 
         match reply_res {
             Ok(ref reply) => {
@@ -138,9 +138,9 @@ impl Redis {
     }
 
     fn log(&self, level: LogLevel, message: &str) {
-        raw::RedisModule_Log(self.ctx,
-                             format!("{:?}\0", level).to_lowercase().as_ptr(),
-                             format!("{}\0", message).as_ptr());
+        raw::log(self.ctx,
+                 format!("{:?}\0", level).to_lowercase().as_ptr(),
+                 format!("{}\0", message).as_ptr());
     }
 
     fn log_debug(&self, message: &str) {
@@ -156,22 +156,21 @@ impl Redis {
     ///
     /// The success return value can be safely ignored.
     pub fn reply_array(&self, len: i64) -> Result<bool, ThrottleError> {
-        handle_status(raw::RedisModule_ReplyWithArray(self.ctx, len as c_long),
+        handle_status(raw::reply_with_array(self.ctx, len as c_long),
                       "Could not reply with long")
     }
 
     pub fn reply_integer(&self, integer: i64) -> Result<bool, ThrottleError> {
-        handle_status(raw::RedisModule_ReplyWithLongLong(self.ctx, integer as c_longlong),
+        handle_status(raw::reply_with_long_long(self.ctx, integer as c_longlong),
                       "Could not reply with longlong")
     }
 
     pub fn reply_string(&self, message: &str) -> Result<bool, ThrottleError> {
-        let redis_str = raw::RedisModule_CreateString(self.ctx,
-                                                      format!("{}\0", message).as_ptr(),
-                                                      message.len());
-        let res = handle_status(raw::RedisModule_ReplyWithString(self.ctx, redis_str),
+        let redis_str =
+            raw::create_string(self.ctx, format!("{}\0", message).as_ptr(), message.len());
+        let res = handle_status(raw::reply_with_string(self.ctx, redis_str),
                                 "Could not reply with string");
-        raw::RedisModule_FreeString(self.ctx, redis_str);
+        raw::free_string(self.ctx, redis_str);
         res
     }
 
@@ -209,21 +208,20 @@ pub fn harness_command(command: &Command,
     match command.run(r, str_args.as_slice()) {
         Ok(_) => raw::Status::Ok,
         Err(e) => {
-            raw::RedisModule_ReplyWithError(ctx,
-                                            format!("Throttle error: {}\0", e.description())
-                                                .as_ptr());
+            raw::reply_with_error(ctx,
+                                  format!("Throttle error: {}\0", e.description()).as_ptr());
             raw::Status::Err
         }
     }
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, ThrottleError> {
-    match raw::RedisModule_CallReplyType(reply) {
-        raw::ReplyType::Integer => Ok(Reply::Integer(raw::RedisModule_CallReplyInteger(reply))),
+    match raw::call_reply_type(reply) {
+        raw::ReplyType::Integer => Ok(Reply::Integer(raw::call_reply_integer(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
         raw::ReplyType::String => {
             let mut length: size_t = 0;
-            let bytes = raw::RedisModule_CallReplyStringPtr(reply, &mut length);
+            let bytes = raw::call_reply_string_ptr(reply, &mut length);
             match from_byte_string(bytes, length) {
                 Ok(s) => Ok(Reply::String(s)),
                 Err(e) => Err(e),
@@ -241,7 +239,7 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply) -> Result<Reply, 
 
 fn manifest_redis_string(redis_str: *mut raw::RedisModuleString) -> Result<String, ThrottleError> {
     let mut length: size_t = 0;
-    let bytes = raw::RedisModule_StringPtrLen(redis_str, &mut length);
+    let bytes = raw::string_ptr_len(redis_str, &mut length);
     from_byte_string(bytes, length)
 }
 

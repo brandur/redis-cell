@@ -10,7 +10,7 @@ pub mod throttle;
 
 use error::ThrottleError;
 use libc::c_int;
-use redis::raw::*;
+use redis::raw;
 use redis::store::RedisStore;
 
 const MODULE_NAME: &'static str = "redis-throttle";
@@ -77,41 +77,38 @@ impl redis::Command for ThrottleCommand {
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
 #[no_mangle]
-pub extern "C" fn Throttle_RedisCommand(ctx: *mut RedisModuleCtx,
-                                        argv: *mut *mut RedisModuleString,
+pub extern "C" fn Throttle_RedisCommand(ctx: *mut raw::RedisModuleCtx,
+                                        argv: *mut *mut raw::RedisModuleString,
                                         argc: c_int)
-                                        -> Status {
+                                        -> raw::Status {
     redis::harness_command(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
 #[no_mangle]
-pub extern "C" fn RedisModule_OnLoad(ctx: *mut RedisModuleCtx,
-                                     argv: *mut *mut RedisModuleString,
+pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
+                                     argv: *mut *mut raw::RedisModuleString,
                                      argc: c_int)
-                                     -> Status {
-    unsafe {
-        if Export_RedisModule_Init(ctx,
-                                   format!("{}\0", MODULE_NAME).as_ptr(),
-                                   MODULE_VERSION,
-                                   REDISMODULE_APIVER_1) == Status::Err {
-            return Status::Err;
-        }
-
-        if RedisModule_CreateCommand(ctx,
-                                     format!("{}\0", ThrottleCommand::name()).as_ptr(),
-                                     Some(Throttle_RedisCommand),
-                                     format!("{}\0", ThrottleCommand::str_flags()).as_ptr(),
-                                     0,
-                                     0,
-                                     0) == Status::Err {
-            return Status::Err;
-        }
-
+                                     -> raw::Status {
+    if raw::init(ctx,
+                 format!("{}\0", MODULE_NAME).as_ptr(),
+                 MODULE_VERSION,
+                 raw::REDISMODULE_APIVER_1) == raw::Status::Err {
+        return raw::Status::Err;
     }
 
-    return Status::Ok;
+    if raw::create_command(ctx,
+                           format!("{}\0", ThrottleCommand::name()).as_ptr(),
+                           Some(Throttle_RedisCommand),
+                           format!("{}\0", ThrottleCommand::str_flags()).as_ptr(),
+                           0,
+                           0,
+                           0) == raw::Status::Err {
+        return raw::Status::Err;
+    }
+
+    return raw::Status::Ok;
 }
 
 /// Produces a time duration for some number of actions per second. For
