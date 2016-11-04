@@ -12,6 +12,8 @@ use error::ThrottleError;
 // operations before returning an error.
 const MAX_CAS_ATTEMPTS: i64 = 5;
 
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub struct Rate {
     pub period: time::Duration,
 }
@@ -39,13 +41,14 @@ impl Rate {
         let duration_ns = make_duration(1).num_nanoseconds().unwrap();
         let count_ns = time::Duration::seconds(n).num_nanoseconds().unwrap();
         Rate {
-            period:
-                time::Duration::milliseconds((((duration_ns as f64) / (count_ns as f64)) as i64) *
-                                             1000),
+            period: time::Duration::nanoseconds(((duration_ns as f64) / (count_ns as f64) *
+                                                ((10 as i64).pow(9) as f64)) as i64),
         }
     }
 }
 
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub struct RateLimitResult {
     pub limit: i64,
     pub remaining: i64,
@@ -239,6 +242,8 @@ impl<T: store::Store> RateLimiter<T> {
     }
 }
 
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub struct RateQuota {
     pub max_burst: i64,
     pub max_rate: Rate,
@@ -261,14 +266,32 @@ fn nanoseconds(x: time::Tm) -> i64 {
     ts.sec * (10 as i64).pow(9) + (ts.nsec as i64)
 }
 
-// fn update_results<T: store::Store>(limiter: &RateLimiter<T>,
-// rlc: &mut RateLimitResult,
-// ttl: time::Duration) {
-// }
-//
-
 #[cfg(test)]
 mod tests {
+    extern crate time;
+
+    use throttle::*;
+
     #[test]
-    fn it_works() {}
+    fn it_creates_rates_from_days() {
+        assert_eq!(Rate { period: time::Duration::hours(1) }, Rate::per_day(24))
+    }
+
+    #[test]
+    fn it_creates_rates_from_hours() {
+        assert_eq!(Rate { period: time::Duration::minutes(10) },
+                   Rate::per_hour(6))
+    }
+
+    #[test]
+    fn it_creates_rates_from_minutes() {
+        assert_eq!(Rate { period: time::Duration::seconds(10) },
+                   Rate::per_minute(6))
+    }
+
+    #[test]
+    fn it_creates_rates_from_seconds() {
+        assert_eq!(Rate { period: time::Duration::milliseconds(200) },
+                   Rate::per_second(5))
+    }
 }

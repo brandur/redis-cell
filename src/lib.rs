@@ -122,9 +122,3 @@ fn parse_i64(arg: &str) -> Result<i64, ThrottleError> {
     arg.parse::<i64>()
         .map_err(|_| error!("Couldn't parse as integer: {}", arg))
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}
