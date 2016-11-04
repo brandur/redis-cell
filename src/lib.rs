@@ -11,7 +11,7 @@ pub mod throttle;
 use error::ThrottleError;
 use libc::c_int;
 use redis::raw;
-use redis::store::RedisStore;
+use throttle::store::RedisStore;
 
 const MODULE_NAME: &'static str = "redis-throttle";
 const MODULE_VERSION: c_int = 1;

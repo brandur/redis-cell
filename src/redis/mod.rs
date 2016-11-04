@@ -4,8 +4,6 @@
 // instead.
 pub mod raw;
 
-pub mod store;
-
 use error::ThrottleError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
@@ -42,7 +40,7 @@ pub enum Reply {
 }
 
 impl Redis {
-    fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
+    pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
         // We use a "format" string to tell redis what types we're passing in.
@@ -114,9 +112,9 @@ impl Redis {
     /// This method coerces a Redis string that looks like an integer into an
     /// integer response. All other types of replies are pass through
     /// unmodified.
-    fn coerce_integer(&self,
-                      reply_res: Result<Reply, ThrottleError>)
-                      -> Result<Reply, ThrottleError> {
+    pub fn coerce_integer(&self,
+                          reply_res: Result<Reply, ThrottleError>)
+                          -> Result<Reply, ThrottleError> {
         match reply_res {
             Ok(Reply::String(s)) => {
                 match s.parse::<i64>() {
@@ -128,22 +126,22 @@ impl Redis {
         }
     }
 
-    fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
+    pub fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
         let res = try!(self.call("EXPIRE", &[key, ttl.to_string().as_str()]));
         parse_bool(res)
     }
 
-    fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
+    pub fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
         self.call("GET", &[key])
     }
 
-    fn log(&self, level: LogLevel, message: &str) {
+    pub fn log(&self, level: LogLevel, message: &str) {
         raw::log(self.ctx,
                  format!("{:?}\0", level).to_lowercase().as_ptr(),
                  format!("{}\0", message).as_ptr());
     }
 
-    fn log_debug(&self, message: &str) {
+    pub fn log_debug(&self, message: &str) {
         // TODO: change to actual debug. Notice for now so that we can see
         // things.
         self.log(LogLevel::Notice, message);
@@ -174,17 +172,17 @@ impl Redis {
         res
     }
 
-    fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
+    pub fn set(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SET", &[key, val]));
         parse_simple_string(res)
     }
 
-    fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
+    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
         parse_simple_string(res)
     }
 
-    fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
+    pub fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
         let res = try!(self.call("SETNX", &[key, val]));
         parse_bool(res)
     }
