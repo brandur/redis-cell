@@ -81,7 +81,7 @@ pub extern "C" fn Throttle_RedisCommand(ctx: *mut raw::RedisModuleCtx,
                                         argv: *mut *mut raw::RedisModuleString,
                                         argc: c_int)
                                         -> raw::Status {
-    redis::harness_command(&ThrottleCommand {}, ctx, argv, argc)
+    redis::Command::harness(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]

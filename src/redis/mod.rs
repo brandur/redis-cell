@@ -15,6 +15,28 @@ pub trait Command {
     fn run(&self, r: Redis, args: &[&str]) -> Result<bool, ThrottleError>;
 }
 
+impl Command {
+    /// Provides a basic wrapper for a command's implementation that parses
+    /// arguments to Rust data types and handles the OK/ERR reply back to Redis.
+    pub fn harness(command: &Command,
+                   ctx: *mut raw::RedisModuleCtx,
+                   argv: *mut *mut raw::RedisModuleString,
+                   argc: c_int)
+                   -> raw::Status {
+        let r = Redis { ctx: ctx };
+        let args = parse_args(argv, argc).unwrap();
+        let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        match command.run(r, str_args.as_slice()) {
+            Ok(_) => raw::Status::Ok,
+            Err(e) => {
+                raw::reply_with_error(ctx,
+                                      format!("Throttle error: {}\0", e.description()).as_ptr());
+                raw::Status::Err
+            }
+        }
+    }
+}
+
 /// LogLevel is a level of logging to be specified with a Redis log directive.
 #[derive(Debug)]
 pub enum LogLevel {
@@ -193,26 +215,6 @@ pub enum Reply {
     Nil,
     String(String),
     Unknown,
-}
-
-/// Provides a basic wrapper for a command's implementation that parses
-/// arguments to Rust data types and handles the OK/ERR reply back to Redis.
-pub fn harness_command(command: &Command,
-                       ctx: *mut raw::RedisModuleCtx,
-                       argv: *mut *mut raw::RedisModuleString,
-                       argc: c_int)
-                       -> raw::Status {
-    let r = Redis { ctx: ctx };
-    let args = parse_args(argv, argc).unwrap();
-    let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    match command.run(r, str_args.as_slice()) {
-        Ok(_) => raw::Status::Ok,
-        Err(e) => {
-            raw::reply_with_error(ctx,
-                                  format!("Throttle error: {}\0", e.description()).as_ptr());
-            raw::Status::Err
-        }
-    }
 }
 
 fn handle_status(status: raw::Status, message: &str) -> Result<bool, ThrottleError> {
