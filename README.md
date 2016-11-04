@@ -52,7 +52,7 @@ the module. It's used like this:
 TH.THROTTLE <key> <max_burst> <count> <period> [<quantity>]
 ```
 
-For example:
+For example (here `quantity` defaults to 1):
 
 ```
 TH.THROTTLE user123 15 30 60
@@ -64,7 +64,34 @@ with a maximum initial burst of 15 actions. Rate limiting parameters are
 provided with every invocation so that buckets can easily be reconfigured on
 the fly.
 
-Implement multiple times of rate limiting by using different bucket names:
+The command will respond with an array of integers:
+
+```
+
+127.0.0.1:6379> TH.THROTTLE bucket 3 10 60 1
+1) (integer) 0
+2) (integer) 4
+3) (integer) 3
+4) (integer) -1
+5) (integer) 6
+```
+
+The meaning of each array item is:
+
+1. Whether the action was limited:
+    * `0` indicates the action is allowed.
+    * `1` indicates that the action was limited/blocked.
+2. The total limit of the bucket (`max_burst` + 1). This is equivalent to the
+   common `X-RateLimit-Limit` HTTP header.
+3. The remaining limit of the bucket. (equivalent to `X-RateLimit-Remaining`.
+4. The number of seconds until the user should retry, and always `-1` if the
+   action was allowed. Equivalent to `Retry-After`.
+5. The number of seconds until the limit will reset to its maximum capacity.
+   Equivalent to `X-RateLimit-Reset`.
+
+### Multiple Rate Limits
+
+Implement different types of rate limiting by using different bucket names:
 
 ```
 TH.THROTTLE user123-read-rate 15 30 60
