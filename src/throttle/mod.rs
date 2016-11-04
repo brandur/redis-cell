@@ -96,7 +96,7 @@ impl<T: store::Store> RateLimiter<T> {
     /// limit based on the size of a file upload in megabytes. If quantity is
     /// 0, no update is performed allowing you to "peek" at the state of the
     /// RateLimiter for a given key.
-    pub fn rate_limit(&self,
+    pub fn rate_limit(&mut self,
                       key: &str,
                       quantity: i64)
                       -> Result<(bool, RateLimitResult), ThrottleError> {
@@ -294,4 +294,7 @@ mod tests {
         assert_eq!(Rate { period: time::Duration::milliseconds(200) },
                    Rate::per_second(5))
     }
+
+    #[test]
+    fn it_rate_limits() {}
 }

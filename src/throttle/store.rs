@@ -2,9 +2,10 @@ extern crate time;
 
 use error::ThrottleError;
 use redis;
+use std::collections::HashMap;
 
 pub trait Store {
-    fn compare_and_swap_with_ttl(&self,
+    fn compare_and_swap_with_ttl(&mut self,
                                  key: &str,
                                  old: i64,
                                  new: i64,
@@ -15,11 +16,61 @@ pub trait Store {
 
     fn log_debug(&self, message: &str);
 
-    fn set_if_not_exists_with_ttl(&self,
+    fn set_if_not_exists_with_ttl(&mut self,
                                   key: &str,
                                   value: i64,
                                   ttl: time::Duration)
                                   -> Result<bool, ThrottleError>;
+}
+
+pub struct MemoryStore {
+    map: HashMap<String, i64>,
+}
+
+impl MemoryStore {
+    pub fn new() -> MemoryStore {
+        MemoryStore { map: HashMap::new() }
+    }
+}
+
+impl Store for MemoryStore {
+    fn compare_and_swap_with_ttl(&mut self,
+                                 key: &str,
+                                 old: i64,
+                                 new: i64,
+                                 _: time::Duration)
+                                 -> Result<bool, ThrottleError> {
+        match self.map.get(key) {
+            Some(n) if *n != old => return Ok(false),
+            _ => (),
+        };
+
+        self.map.insert(String::from(key), new);
+        Ok(true)
+    }
+
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+        match self.map.get(key) {
+            Some(n) => Ok((*n, time::now_utc())),
+            None => Ok((-1, time::now_utc())),
+        }
+    }
+
+    fn log_debug(&self, _: &str) {}
+
+    fn set_if_not_exists_with_ttl(&mut self,
+                                  key: &str,
+                                  value: i64,
+                                  _: time::Duration)
+                                  -> Result<bool, ThrottleError> {
+        match self.map.get(key) {
+            Some(_) => Ok(false),
+            None => {
+                self.map.insert(String::from(key), value);
+                Ok(true)
+            }
+        }
+    }
 }
 
 /// InternalRedisStore is a store implementation that uses Redis module APIs in
@@ -37,7 +88,7 @@ impl<'a> InternalRedisStore<'a> {
 }
 
 impl<'a> Store for InternalRedisStore<'a> {
-    fn compare_and_swap_with_ttl(&self,
+    fn compare_and_swap_with_ttl(&mut self,
                                  key: &str,
                                  old: i64,
                                  new: i64,
@@ -81,7 +132,7 @@ impl<'a> Store for InternalRedisStore<'a> {
         self.r.log_debug(message);
     }
 
-    fn set_if_not_exists_with_ttl(&self,
+    fn set_if_not_exists_with_ttl(&mut self,
                                   key: &str,
                                   value: i64,
                                   ttl: time::Duration)

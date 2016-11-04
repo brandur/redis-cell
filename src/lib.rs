@@ -51,11 +51,11 @@ impl redis::Command for ThrottleCommand {
         // it's not that big of a problem.
         let store = store::InternalRedisStore::new(&r);
         let rate = throttle::Rate { period: actions_per_second(count, period) };
-        let limiter = throttle::RateLimiter::new(store,
-                                                 throttle::RateQuota {
-                                                     max_burst: max_burst,
-                                                     max_rate: rate,
-                                                 });
+        let mut limiter = throttle::RateLimiter::new(store,
+                                                     throttle::RateQuota {
+                                                         max_burst: max_burst,
+                                                         max_rate: rate,
+                                                     });
 
         let (throttled, rate_limit_result) = try!(limiter.rate_limit(bucket, quantity));
 
