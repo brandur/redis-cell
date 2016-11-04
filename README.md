@@ -2,11 +2,11 @@
 
 A Redis module that provides rate limiting in Redis as a single command.
 Implements the fairly sophisticated [generic cell rate algorithm][gcra] (GCRA)
-which provides a perfect time rolling window and doesn't require a background
-drip process.
+which provides a rolling time window and doesn't depend on a background drip
+process.
 
 The primitives exposed by Redis are perfect for doing work around rate
-limiting, but because it's not buit in it's very common for companies and
+limiting, but because it's not built in, it's very common for companies and
 organizations to implement their own rate limiting logic on top of Redis (I've
 seen this at both Heroku and Stripe for example). This can often result in
 naive implementations that take a few tries to get right. The directive of
