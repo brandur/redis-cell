@@ -39,8 +39,7 @@ impl Command {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
                 raw::reply_with_error(ctx,
-                                      format!("Throttle error: {}\0",
-                                              e.description())
+                                      format!("Throttle error: {}\0", e.description())
                                           .as_ptr());
                 raw::Status::Err
             }
@@ -64,10 +63,7 @@ pub struct Redis {
 }
 
 impl Redis {
-    pub fn call(&self,
-                command: &str,
-                args: &[&str])
-                -> Result<Reply, ThrottleError> {
+    pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
         // We use a "format" string to tell redis what types we're passing in.
@@ -80,11 +76,7 @@ impl Redis {
         let format: String = iter::repeat("s").take(args.len()).collect();
 
         let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
-            .map(|a| {
-                raw::create_string(self.ctx,
-                                   format!("{}\0", a).as_ptr(),
-                                   a.len())
-            })
+            .map(|a| raw::create_string(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
             .collect();
 
         // One would hope that there's a better way to handle a va_list than
@@ -192,8 +184,7 @@ impl Redis {
     }
 
     pub fn reply_integer(&self, integer: i64) -> Result<(), ThrottleError> {
-        handle_status(raw::reply_with_long_long(self.ctx,
-                                                integer as c_longlong),
+        handle_status(raw::reply_with_long_long(self.ctx, integer as c_longlong),
                       "Could not reply with longlong")
     }
 
@@ -212,13 +203,8 @@ impl Redis {
         parse_simple_string(res)
     }
 
-    pub fn setex(&self,
-                 key: &str,
-                 ttl: i64,
-                 val: &str)
-                 -> Result<(), ThrottleError> {
-        let res =
-            try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
+    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), ThrottleError> {
+        let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
         parse_simple_string(res)
     }
 
@@ -240,9 +226,7 @@ pub enum Reply {
     Unknown,
 }
 
-fn handle_status(status: raw::Status,
-                 message: &str)
-                 -> Result<(), ThrottleError> {
+fn handle_status(status: raw::Status, message: &str) -> Result<(), ThrottleError> {
     match status {
         raw::Status::Ok => Ok(()),
         raw::Status::Err => Err(error!(message)),
@@ -252,9 +236,7 @@ fn handle_status(status: raw::Status,
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
                         -> Result<Reply, ThrottleError> {
     match raw::call_reply_type(reply) {
-        raw::ReplyType::Integer => {
-            Ok(Reply::Integer(raw::call_reply_integer(reply)))
-        }
+        raw::ReplyType::Integer => Ok(Reply::Integer(raw::call_reply_integer(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
         raw::ReplyType::String => {
             let mut length: size_t = 0;
@@ -315,10 +297,7 @@ fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
         Reply::Unknown => Ok(false),
         Reply::Integer(n) if n == 0 => Ok(false),
         Reply::Integer(n) if n == 1 => Ok(true),
-        r => {
-            Err(error!("Command returned non-boolean value (type was {:?}).",
-                       r))
-        }
+        r => Err(error!("Command returned non-boolean value (type was {:?}).", r)),
     }
 }
 
@@ -327,9 +306,6 @@ fn parse_simple_string(reply: Reply) -> Result<(), ThrottleError> {
         // may also return a Redis null, but not with the parameters that
         // we currently allow
         Reply::String(ref s) if s.as_str() == "OK" => Ok(()),
-        r => {
-            Err(error!("Command returned non-string value (type was {:?}).",
-                       r))
-        }
+        r => Err(error!("Command returned non-string value (type was {:?}).", r)),
     }
 }

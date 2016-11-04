@@ -36,8 +36,7 @@ impl Rate {
     /// be 200 ms.
     pub fn per_period(n: i64, period: time::Duration) -> Rate {
         let ns: i64 = period.num_nanoseconds().unwrap();
-        let period =
-            time::Duration::nanoseconds(((ns as f64) / (n as f64)) as i64);
+        let period = time::Duration::nanoseconds(((ns as f64) / (n as f64)) as i64);
         Rate { period: period }
     }
 
@@ -74,12 +73,11 @@ pub struct RateLimiter<'a, T: 'a + store::Store> {
 impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
     pub fn new(store: &'a mut T, quota: RateQuota) -> RateLimiter<'a, T> {
         RateLimiter {
-            delay_variation_tolerance:
-                time::Duration::nanoseconds(quota.max_rate
+            delay_variation_tolerance: time::Duration::nanoseconds(quota.max_rate
                 .period
                 .num_nanoseconds()
                 .unwrap() *
-                                            (quota.max_burst + 1)),
+                                                                   (quota.max_burst + 1)),
             emission_interval: quota.max_rate.period,
             limit: quota.max_burst + 1,
             store: store,
@@ -109,8 +107,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
 
         let increment = time::Duration::nanoseconds(self.emission_interval
             .num_nanoseconds()
-            .unwrap() *
-                                                    quantity);
+            .unwrap() * quantity);
         self.log_start(key, quantity, increment);
 
         // Rust actually detects that this variable can only ever be assigned
@@ -276,8 +273,7 @@ mod tests {
 
     #[test]
     fn it_creates_rates_from_days() {
-        assert_eq!(Rate { period: time::Duration::hours(1) },
-                   Rate::per_day(24))
+        assert_eq!(Rate { period: time::Duration::hours(1) }, Rate::per_day(24))
     }
 
     #[test]
@@ -469,9 +465,7 @@ mod tests {
             }
         }
 
-        fn get_with_time(&self,
-                         key: &str)
-                         -> Result<(i64, time::Tm), ThrottleError> {
+        fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
             let tup = try!(self.store.get_with_time(key));
             Ok((tup.0, self.clock))
         }

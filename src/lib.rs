@@ -28,10 +28,7 @@ impl Command for ThrottleCommand {
     }
 
     // Run the command.
-    fn run(&self,
-           r: redis::Redis,
-           args: &[&str])
-           -> Result<(), ThrottleError> {
+    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
             return Err(error!("Usage: throttle <key> <max_burst> <count> \
                                <period> [<quantity>]"));
@@ -51,16 +48,14 @@ impl Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let mut store = store::InternalRedisStore::new(&r);
-        let rate = throttle::Rate::per_period(count,
-                                              time::Duration::seconds(period));
+        let rate = throttle::Rate::per_period(count, time::Duration::seconds(period));
         let mut limiter = throttle::RateLimiter::new(&mut store,
                                                      throttle::RateQuota {
                                                          max_burst: max_burst,
                                                          max_rate: rate,
                                                      });
 
-        let (throttled, rate_limit_result) =
-            try!(limiter.rate_limit(key, quantity));
+        let (throttled, rate_limit_result) = try!(limiter.rate_limit(key, quantity));
 
         // Reply with an array containing rate limiting results. Note that
         // Redis' support for interesting data types is quite weak, so we have

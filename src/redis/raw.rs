@@ -59,9 +59,7 @@ pub fn init(ctx: *mut RedisModuleCtx,
             module_version: c_int,
             api_version: c_int)
             -> Status {
-    unsafe {
-        Export_RedisModule_Init(ctx, modulename, module_version, api_version)
-    }
+    unsafe { Export_RedisModule_Init(ctx, modulename, module_version, api_version) }
 }
 
 
@@ -95,13 +93,7 @@ pub fn create_command(ctx: *mut RedisModuleCtx,
                       lastkey: c_int,
                       keystep: c_int)
                       -> Status {
-    RedisModule_CreateCommand(ctx,
-                              name,
-                              cmdfunc,
-                              strflags,
-                              firstkey,
-                              lastkey,
-                              keystep)
+    RedisModule_CreateCommand(ctx, name, cmdfunc, strflags, firstkey, lastkey, keystep)
 }
 
 pub fn create_string(ctx: *mut RedisModuleCtx,
@@ -138,9 +130,7 @@ pub fn reply_with_error(ctx: *mut RedisModuleCtx, err: *const u8) {
     RedisModule_ReplyWithError(ctx, err)
 }
 
-pub fn reply_with_long_long(ctx: *mut RedisModuleCtx,
-                            ll: c_longlong)
-                            -> Status {
+pub fn reply_with_long_long(ctx: *mut RedisModuleCtx, ll: c_longlong) -> Status {
     RedisModule_ReplyWithLongLong(ctx, ll)
 }
 
@@ -150,15 +140,11 @@ pub fn reply_with_string(ctx: *mut RedisModuleCtx,
     RedisModule_ReplyWithString(ctx, str)
 }
 
-pub fn string_ptr_len(str: *mut RedisModuleString,
-                      len: *mut size_t)
-                      -> *const u8 {
+pub fn string_ptr_len(str: *mut RedisModuleString, len: *mut size_t) -> *const u8 {
     RedisModule_StringPtrLen(str, len)
 }
 
-pub fn string_set(key: *mut RedisModuleKey,
-                  str: *mut RedisModuleString)
-                  -> Status {
+pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Status {
     RedisModule_StringSet(key, str)
 }
 
@@ -174,7 +160,8 @@ extern "C" {
                                    api_version: c_int)
                                    -> Status;
 
-    static RedisModule_CallReplyType: extern "C" fn(reply: *mut RedisModuleCallReply) -> ReplyType;
+    static RedisModule_CallReplyType: extern "C" fn(reply: *mut RedisModuleCallReply)
+                                                    -> ReplyType;
 
     static RedisModule_FreeCallReply: extern "C" fn(reply: *mut RedisModuleCallReply);
 
@@ -204,8 +191,7 @@ extern "C" {
     static RedisModule_FreeString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                  str: *mut RedisModuleString);
 
-    static RedisModule_GetSelectedDb: extern "C" fn(ctx: *mut RedisModuleCtx)
-                                                    -> c_int;
+    static RedisModule_GetSelectedDb: extern "C" fn(ctx: *mut RedisModuleCtx) -> c_int;
 
     static RedisModule_Log: extern "C" fn(ctx: *mut RedisModuleCtx,
                                           level: *const u8,
@@ -223,14 +209,16 @@ extern "C" {
     static RedisModule_ReplyWithError: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                      err: *const u8);
 
-    static RedisModule_ReplyWithLongLong: extern "C" fn(ctx: *mut RedisModuleCtx, ll: c_longlong)
+    static RedisModule_ReplyWithLongLong: extern "C" fn(ctx: *mut RedisModuleCtx,
+                                                        ll: c_longlong)
                                                         -> Status;
 
     static RedisModule_ReplyWithString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                       str: *mut RedisModuleString)
                                                       -> Status;
 
-    static RedisModule_StringPtrLen: extern "C" fn(str: *mut RedisModuleString, len: *mut size_t)
+    static RedisModule_StringPtrLen: extern "C" fn(str: *mut RedisModuleString,
+                                                   len: *mut size_t)
                                                    -> *const u8;
 
     static RedisModule_StringSet: extern "C" fn(key: *mut RedisModuleKey,
