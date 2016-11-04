@@ -107,19 +107,7 @@ impl<T: store::Store> RateLimiter<T> {
         let increment = time::Duration::nanoseconds(self.emission_interval
             .num_nanoseconds()
             .unwrap() * quantity);
-
-        log_debug!(self.store, "");
-        log_debug!(self.store, "-----");
-        log_debug!(self.store, "bucket = {} quantity = {}", key, quantity);
-        log_debug!(self.store,
-                   "delay_variation_tolerance = {}ms",
-                   self.delay_variation_tolerance.num_milliseconds());
-        log_debug!(self.store,
-                   "emission_interval = {}ms",
-                   self.emission_interval.num_milliseconds());
-        log_debug!(self.store,
-                   "tat_increment = {}ms (emission_interval * quantity)",
-                   increment.num_milliseconds());
+        self.log_start(key, quantity, increment);
 
         // Rust actually detects that this variable can only ever be assigned
         // once despite our loops and conditions so it doesn't have to be
@@ -218,13 +206,36 @@ impl<T: store::Store> RateLimiter<T> {
         }
         rlc.reset_after = ttl;
 
+        self.log_end(&rlc);
+        Ok((limited, rlc))
+    }
+
+    fn log_end(&self, rlc: &RateLimitResult) {
         log_debug!(self.store,
                    "limit = {} remaining = {}",
                    self.limit,
                    rlc.remaining);
-        log_debug!(self.store, "reset_after = {}ms", ttl.num_milliseconds());
+        log_debug!(self.store,
+                   "retry_after = {}ms",
+                   rlc.retry_after.num_milliseconds());
+        log_debug!(self.store,
+                   "reset_after = {}ms",
+                   rlc.reset_after.num_milliseconds());
+    }
 
-        Ok((limited, rlc))
+    fn log_start(&self, key: &str, quantity: i64, increment: time::Duration) {
+        log_debug!(self.store, "");
+        log_debug!(self.store, "-----");
+        log_debug!(self.store, "bucket = {} quantity = {}", key, quantity);
+        log_debug!(self.store,
+                   "delay_variation_tolerance = {}ms",
+                   self.delay_variation_tolerance.num_milliseconds());
+        log_debug!(self.store,
+                   "emission_interval = {}ms",
+                   self.emission_interval.num_milliseconds());
+        log_debug!(self.store,
+                   "tat_increment = {}ms (emission_interval * quantity)",
+                   increment.num_milliseconds());
     }
 }
 
