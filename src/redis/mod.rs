@@ -9,6 +9,7 @@ pub mod store;
 use error::ThrottleError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
+use std::iter;
 
 pub trait Command {
     fn run(&self, r: Redis, args: &[&str]) -> CommandResult;
@@ -44,15 +45,17 @@ impl Redis {
     fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
+        // We use a "format" string to tell redis what types we're passing in.
+        // Currently we just pass everything as a string so this is just the
+        // character "s" repeated as many times as we have arguments.
+        let format: String = iter::repeat("s").take(args.len()).collect();
+
         let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
             .map(|a| raw::RedisModule_CreateString(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
             .collect();
 
         // One would hope that there's a better way to handle a va_list than
         // this, but I can't find it for the life of me.
-        //
-        // TODO: Note that my main problem turned out to be something else, so
-        // it's worth trying to compact this back down to one call again.
         let raw_reply = match args.len() {
             1 => {
                 // WARNING: This is downright hazardous, but I've noticed that
@@ -63,20 +66,20 @@ impl Redis {
                 // this.
                 raw::call1::RedisModule_Call(self.ctx,
                                              format!("{}\0", command).as_ptr(),
-                                             "s\0".as_ptr(),
+                                             format!("{}\0", format).as_ptr(),
                                              terminated_args[0])
             }
             2 => {
                 raw::call2::RedisModule_Call(self.ctx,
                                              format!("{}\0", command).as_ptr(),
-                                             "ss\0".as_ptr(),
+                                             format!("{}\0", format).as_ptr(),
                                              terminated_args[0],
                                              terminated_args[1])
             }
             3 => {
                 raw::call3::RedisModule_Call(self.ctx,
                                              format!("{}\0", command).as_ptr(),
-                                             "sss\0".as_ptr(),
+                                             format!("{}\0", format).as_ptr(),
                                              terminated_args[0],
                                              terminated_args[1],
                                              terminated_args[2])
