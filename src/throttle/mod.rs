@@ -350,9 +350,7 @@ mod tests {
             println!("starting test case = {:?}", case.num);
             println!("{:?}", case);
 
-            //test_store.clock = case.now;
-            limiter.store.set_clock(case.now);
-            println!("store clock = {}", case.now.rfc3339());
+            limiter.store.clock = case.now;
             let (limited, results) = limiter.rate_limit("foo", case.volume).unwrap();
 
             println!("limited = {:?}", limited);
@@ -430,11 +428,6 @@ mod tests {
                 store: store,
             }
         }
-
-        fn set_clock(&mut self, clock: time::Tm) {
-            println!("setting clock to = {}", clock.rfc3339());
-            self.clock = clock;
-        }
     }
 
     impl<'a> store::Store for TestStore<'a> {
@@ -453,7 +446,6 @@ mod tests {
 
         fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
             let tup = try!(self.store.get_with_time(key));
-            println!("get with time = {} {}", tup.0, self.clock.rfc3339());
             Ok((tup.0, self.clock))
         }
 
