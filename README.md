@@ -49,13 +49,13 @@ From Redis (try running `redis-cli`) use the new `throttle` command loaded by
 the module. It's used like this:
 
 ```
-throttle <key> <max_burst> <count> <period> [<quantity>]
+TH.THROTTLE <key> <max_burst> <count> <period> [<quantity>]
 ```
 
 For example:
 
 ```
-throttle user123 15 30 60
+TH.THROTTLE user123 15 30 60
 ```
 
 This means that a single action should be applied against the rate limit of the
@@ -67,8 +67,8 @@ the fly.
 Implement multiple times of rate limiting by using different bucket names:
 
 ```
-throttle user123-read-rate 15 30 60
-throttle user123-write-rate 5 10 60
+TH.THROTTLE user123-read-rate 15 30 60
+TH.THROTTLE user123-write-rate 5 10 60
 ```
 
 ## On Rust
