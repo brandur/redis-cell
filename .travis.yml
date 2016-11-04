@@ -3,6 +3,9 @@ language: rust
 # magic word to use faster/newer container-based architecture
 sudo: false
 
+# Cache built crates for much faster builds.
+cache: cargo
+
 rust:
   - stable
   - beta
