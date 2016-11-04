@@ -20,18 +20,15 @@ pub struct Rate {
 
 impl Rate {
     pub fn per_day(n: i64) -> Rate {
-        Rate::per_time(n,
-                       |n: i64| -> time::Duration { time::Duration::days(n) })
+        Rate::per_period(n, time::Duration::days(1))
     }
 
     pub fn per_hour(n: i64) -> Rate {
-        Rate::per_time(n,
-                       |n: i64| -> time::Duration { time::Duration::hours(n) })
+        Rate::per_period(n, time::Duration::hours(1))
     }
 
     pub fn per_minute(n: i64) -> Rate {
-        Rate::per_time(n,
-                       |n: i64| -> time::Duration { time::Duration::minutes(n) })
+        Rate::per_period(n, time::Duration::minutes(1))
     }
 
     /// Produces a rate for some number of actions per second. For example, if
@@ -45,19 +42,7 @@ impl Rate {
     }
 
     pub fn per_second(n: i64) -> Rate {
-        Rate::per_time(n,
-                       |n: i64| -> time::Duration { time::Duration::seconds(n) })
-    }
-
-    pub fn per_time<F>(n: i64, make_duration: F) -> Rate
-        where F: Fn(i64) -> time::Duration
-    {
-        let duration_ns = make_duration(1).num_nanoseconds().unwrap();
-        let count_ns = time::Duration::seconds(n).num_nanoseconds().unwrap();
-        Rate {
-            period: time::Duration::nanoseconds(((duration_ns as f64) / (count_ns as f64) *
-                                                ((10 as i64).pow(9) as f64)) as i64),
-        }
+        Rate::per_period(n, time::Duration::seconds(1))
     }
 }
 
@@ -266,11 +251,6 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
 pub struct RateQuota {
     pub max_burst: i64,
     pub max_rate: Rate,
-}
-
-fn div_durations(x: time::Duration, y: time::Duration) -> time::Duration {
-    time::Duration::nanoseconds(x.num_nanoseconds().unwrap() /
-                                y.num_nanoseconds().unwrap())
 }
 
 fn from_nanoseconds(x: i64) -> time::Tm {
