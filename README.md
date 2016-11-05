@@ -109,6 +109,11 @@ instead of C will convey similar performance characteristics, but result in an
 implementation that's more likely to be devoid of the bugs and memory pitfalls
 commonly found in many C programs.
 
+## License
+
+This is free software under the terms of MIT the license (see the file
+`LICENSE` for details).
+
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
 [redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
 [rust-downloads]: https://www.rust-lang.org/en-US/downloads.html
