@@ -69,9 +69,6 @@ Where `key` is an identifier to rate limit against. Examples might be:
 * The origin IP address of an incoming request.
 * A static string (e.g. `global`) to limit actions across the entire system.
 
-like a user account's unique identifier, the origin IP address of an incoming
-request, 
-
 For example:
 
 ```
