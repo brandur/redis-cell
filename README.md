@@ -28,7 +28,12 @@ $ tar -zxf redis-throttle-*.tar.gz
 $ cp libredis_throttle.so /path/to/modules/
 ```
 
-**Or**, clone and build the project:
+No binaries are currently being distributed, so it's necessary to build the
+project from source. You'll need to 
+
+**Or**, clone and build the project from source. You'll need to [install
+Rust][rust-downloads] to do so (this may be as easy as a `brew install rust` if
+you're on Mac).
 
 ```
 $ git clone https://github.com/brandur/redis-throttle.git
