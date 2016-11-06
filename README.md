@@ -19,17 +19,14 @@ pluggable into many cloud architectures.
 an issue if there's interest in having binaries for architectures or operating
 systems that are not currently supported.
 
-(Note that the extension will be **.dylib** instead of **.so** for Mac
-releases.
+Download and extract the library, then move it somewhere that Redis can access
+it (note that the extension will be **.dylib** instead of **.so** for Mac
+releases):
 
 ```
 $ tar -zxf redis-throttle-*.tar.gz
 $ cp libredis_throttle.so /path/to/modules/
 ```
-
-No binaries are currently being distributed, so it's necessary to build the
-project from source. You'll need to [install Rust][rust-downloads] (this may be
-as easy as a `brew install rust` if you're on Mac).
 
 **Or**, clone and build the project:
 
