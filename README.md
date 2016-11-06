@@ -13,6 +13,10 @@ naive implementations that take a few tries to get right. The directive of
 redis-throttle is to provide a language-agnostic rate limiter that's easily
 pluggable into many cloud architectures.
 
+[Informal benchmarks][benchmarks] show that redis-throttle is pretty fast,
+taking a little under twice as long to run as a basic Redis `SET` (very roughly
+0.1 ms per command as seen from a Redis client).
+
 ## Install
 
 [Binaries for redis-throttle are available for Mac and Linux][releases]. Open
@@ -138,6 +142,7 @@ commonly found in many C programs.
 This is free software under the terms of MIT the license (see the file
 `LICENSE` for details).
 
+[benchmarks]: https://gist.github.com/brandur/90698498bd543598d00df46e32be3268
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
 [redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
 [releases]: https://github.com/brandur/redis-throttle/releases
