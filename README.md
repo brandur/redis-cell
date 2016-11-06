@@ -23,6 +23,9 @@ as easy as:
 $ brew install rust
 ```
 
+(If there's sufficient interest in the project I'll start to distribute
+precompiled binaries.)
+
 Clone and build the project:
 
 ```
@@ -52,6 +55,15 @@ the module. It's used like this:
 TH.THROTTLE <key> <max_burst> <count per period> <period> [<quantity>]
 ```
 
+Where `key` is an identifier to rate limit against. Examples might be:
+
+* A user account's unique identifier.
+* The origin IP address of an incoming request.
+* A static string (e.g. `global`) to limit actions across the entire system.
+
+like a user account's unique identifier, the origin IP address of an incoming
+request, 
+
 For example:
 
 ```
@@ -62,6 +74,8 @@ TH.THROTTLE user123 15 30 60 1
                |     └───────────── 15 max_burst
                └─────────────────── key "user123"
 ```
+
+### Response
 
 This means that a single token (the `1` in the last parameter) should be
 applied against the rate limit of the key `user123`. 30 tokens on the key are
