@@ -30,7 +30,7 @@ impl Command for ThrottleCommand {
     // Run the command.
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: throttle <key> <max_burst> <count> \
+            return Err(error!("Usage: throttle <key> <max_burst> <count per period> \
                                <period> [<quantity>]"));
         }
 

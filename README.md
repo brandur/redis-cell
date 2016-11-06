@@ -49,31 +49,34 @@ From Redis (try running `redis-cli`) use the new `throttle` command loaded by
 the module. It's used like this:
 
 ```
-TH.THROTTLE <key> <max_burst> <count> <period> [<quantity>]
+TH.THROTTLE <key> <max_burst> <count per period> <period> [<quantity>]
 ```
 
 For example (here `quantity` defaults to 1):
 
 ```
 TH.THROTTLE user123 15 30 60
+               ▲     ▲  ▲  ▲
+               |     |  └──┴──── 30 tokens / 60 seconds
+               |     └────────── 15 max_burst
+               └──────────────── key "user123"
 ```
 
-This means that a single action should be applied against the rate limit of the
-bucket `user123`. 30 actions on the bucket are allowed over a 60 second period
-with a maximum initial burst of 15 actions. Rate limiting parameters are
-provided with every invocation so that buckets can easily be reconfigured on
-the fly.
+This means that a single token should be applied against the rate limit of the
+key `user123`. 30 tokens on the key are allowed over a 60 second period with a
+maximum initial burst of 15 tokens. Rate limiting parameters are provided with
+every invocation so that limits can easily be reconfigured on the fly.
 
 The command will respond with an array of integers:
 
 ```
 
-127.0.0.1:6379> TH.THROTTLE bucket 3 10 60 1
+127.0.0.1:6379> TH.THROTTLE user123 15 30 60
 1) (integer) 0
-2) (integer) 4
-3) (integer) 3
+2) (integer) 16
+3) (integer) 15
 4) (integer) -1
-5) (integer) 6
+5) (integer) 2
 ```
 
 The meaning of each array item is:
@@ -81,9 +84,9 @@ The meaning of each array item is:
 1. Whether the action was limited:
     * `0` indicates the action is allowed.
     * `1` indicates that the action was limited/blocked.
-2. The total limit of the bucket (`max_burst` + 1). This is equivalent to the
+2. The total limit of the key (`max_burst` + 1). This is equivalent to the
    common `X-RateLimit-Limit` HTTP header.
-3. The remaining limit of the bucket. (equivalent to `X-RateLimit-Remaining`.
+3. The remaining limit of the key. (equivalent to `X-RateLimit-Remaining`.
 4. The number of seconds until the user should retry, and always `-1` if the
    action was allowed. Equivalent to `Retry-After`.
 5. The number of seconds until the limit will reset to its maximum capacity.
@@ -91,7 +94,7 @@ The meaning of each array item is:
 
 ### Multiple Rate Limits
 
-Implement different types of rate limiting by using different bucket names:
+Implement different types of rate limiting by using different key names:
 
 ```
 TH.THROTTLE user123-read-rate 15 30 60
