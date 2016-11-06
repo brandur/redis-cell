@@ -52,20 +52,22 @@ the module. It's used like this:
 TH.THROTTLE <key> <max_burst> <count per period> <period> [<quantity>]
 ```
 
-For example (here `quantity` defaults to 1):
+For example:
 
 ```
-TH.THROTTLE user123 15 30 60
-               ▲     ▲  ▲  ▲
-               |     |  └──┴──── 30 tokens / 60 seconds
-               |     └────────── 15 max_burst
-               └──────────────── key "user123"
+TH.THROTTLE user123 15 30 60 1
+               ▲     ▲  ▲  ▲ ▲
+               |     |  |  | └───── apply 1 token (default if omitted)
+               |     |  └──┴─────── 30 tokens / 60 seconds
+               |     └───────────── 15 max_burst
+               └─────────────────── key "user123"
 ```
 
-This means that a single token should be applied against the rate limit of the
-key `user123`. 30 tokens on the key are allowed over a 60 second period with a
-maximum initial burst of 15 tokens. Rate limiting parameters are provided with
-every invocation so that limits can easily be reconfigured on the fly.
+This means that a single token (the `1` in the last parameter) should be
+applied against the rate limit of the key `user123`. 30 tokens on the key are
+allowed over a 60 second period with a maximum initial burst of 15 tokens. Rate
+limiting parameters are provided with every invocation so that limits can
+easily be reconfigured on the fly.
 
 The command will respond with an array of integers:
 
