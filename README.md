@@ -15,35 +15,41 @@ pluggable into many cloud architectures.
 
 ## Install
 
+[Binaries for redis-throttle are available for Mac and Linux][releases]. Open
+an issue if there's interest in having binaries for architectures or operating
+systems that are not currently supported.
+
+(Note that the extension will be **.dylib** instead of **.so** for Mac
+releases.
+
+```
+$ tar -zxf redis-throttle-*.tar.gz
+$ cp libredis_throttle.so /path/to/modules/
+```
+
 No binaries are currently being distributed, so it's necessary to build the
-project from source. You'll need to [install Rust][rust-downloads] which may be
-as easy as:
+project from source. You'll need to [install Rust][rust-downloads] (this may be
+as easy as a `brew install rust` if you're on Mac).
 
-```
-$ brew install rust
-```
-
-(If there's sufficient interest in the project I'll start to distribute
-precompiled binaries.)
-
-Clone and build the project:
+**Or**, clone and build the project:
 
 ```
 $ git clone https://github.com/brandur/redis-throttle.git
 $ cd redis-throttle
 $ cargo build --release
+$ cp target/release/libredis_throttle.dylib /path/to/modules/
 ```
 
 Run Redis pointing to the newly built module:
 
 ```
-redis-server --loadmodule target/release/libredis_throttle.dylib
+redis-server --loadmodule /path/to/modules/libredis_throttle.so
 ```
 
 Alternatively add the following to a `redis.conf` file:
 
 ```
-loadmodule target/release/libredis_throttle.dylib
+loadmodule /path/to/modules/libredis_throttle.so
 ```
 
 ## Usage
@@ -135,4 +141,5 @@ This is free software under the terms of MIT the license (see the file
 
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
 [redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
+[releases]: https://github.com/brandur/redis-throttle/releases
 [rust-downloads]: https://www.rust-lang.org/en-US/downloads.html
