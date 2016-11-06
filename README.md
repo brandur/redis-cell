@@ -56,9 +56,10 @@ For example (here `quantity` defaults to 1):
 
 ```
 TH.THROTTLE user123 15 30 60
-                     ▲  ▲  ▲
-                     |  └──┴──── 30 actions / 60 seconds
-                     └────────── 15 max_burst
+               ▲     ▲  ▲  ▲
+               |     |  └──┴──── 30 actions / 60 seconds
+               |     └────────── 15 max_burst
+               └──────────────── bucket "user123"
 ```
 
 This means that a single action should be applied against the rate limit of the
