@@ -39,7 +39,7 @@ impl Command {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
                 raw::reply_with_error(ctx,
-                                      format!("Throttle error: {}\0", e.description())
+                                      format!("Cell error: {}\0", e.description())
                                           .as_ptr());
                 raw::Status::Err
             }
@@ -274,9 +274,7 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
     Ok(args)
 }
 
-fn from_byte_string(byte_str: *const u8,
-                    length: size_t)
-                    -> Result<String, CellError> {
+fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, CellError> {
     let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
     for j in 0..length {
         let byte: u8 = unsafe { *byte_str.offset(j as isize) };

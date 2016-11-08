@@ -188,7 +188,7 @@ impl<'a> Store for InternalRedisStore<'a> {
 mod tests {
     extern crate time;
 
-    use throttle::store::*;
+    use cell::store::*;
 
     #[test]
     fn it_performs_compare_and_swap_with_ttl() {

@@ -4,15 +4,15 @@ extern crate time;
 #[macro_use]
 mod macros;
 
+pub mod cell;
 pub mod error;
 mod redis;
-pub mod throttle;
 
+use cell::store;
 use error::CellError;
 use libc::c_int;
 use redis::Command;
 use redis::raw;
-use throttle::store;
 
 const MODULE_NAME: &'static str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
@@ -49,12 +49,12 @@ impl Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let mut store = store::InternalRedisStore::new(&r);
-        let rate = throttle::Rate::per_period(count, time::Duration::seconds(period));
-        let mut limiter = throttle::RateLimiter::new(&mut store,
-                                                     throttle::RateQuota {
-                                                         max_burst: max_burst,
-                                                         max_rate: rate,
-                                                     });
+        let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
+        let mut limiter = cell::RateLimiter::new(&mut store,
+                                                 cell::RateQuota {
+                                                     max_burst: max_burst,
+                                                     max_rate: rate,
+                                                 });
 
         let (throttled, rate_limit_result) = try!(limiter.rate_limit(key, quantity));
 

@@ -269,7 +269,7 @@ mod tests {
 
     use error::CellError;
     use std::error::Error;
-    use throttle::*;
+    use cell::*;
 
     #[test]
     fn it_creates_rates_from_days() {
