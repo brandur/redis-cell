@@ -15,7 +15,7 @@ mk_tarball() {
     local out_dir=$(pwd)
 
     # Naming will be .dylib on OSX and .so elsewhere.
-    cp target/$TARGET/release/libredis_throttle.* $td
+    cp target/$TARGET/release/libredis_cell.* $td
 
     pushd $td
 

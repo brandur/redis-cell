@@ -73,7 +73,7 @@ Where `key` is an identifier to rate limit against. Examples might be:
 For example:
 
 ```
-TH.THROTTLE user123 15 30 60 1
+CL.THROTTLE user123 15 30 60 1
                ▲     ▲  ▲  ▲ ▲
                |     |  |  | └───── apply 1 token (default if omitted)
                |     |  └──┴─────── 30 tokens / 60 seconds
@@ -93,7 +93,7 @@ The command will respond with an array of integers:
 
 ```
 
-127.0.0.1:6379> TH.THROTTLE user123 15 30 60
+127.0.0.1:6379> CL.THROTTLE user123 15 30 60
 1) (integer) 0
 2) (integer) 16
 3) (integer) 15
@@ -119,8 +119,8 @@ The meaning of each array item is:
 Implement different types of rate limiting by using different key names:
 
 ```
-TH.THROTTLE user123-read-rate 15 30 60
-TH.THROTTLE user123-write-rate 5 10 60
+CL.THROTTLE user123-read-rate 15 30 60
+CL.THROTTLE user123-write-rate 5 10 60
 ```
 
 ## On Rust
