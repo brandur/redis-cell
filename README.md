@@ -1,4 +1,4 @@
-# redis-throttle [![Build Status](https://travis-ci.org/brandur/redis-throttle.svg?branch=master)](https://travis-ci.org/brandur/redis-throttle)
+# redis-cell [![Build Status](https://travis-ci.org/brandur/redis-cell.svg?branch=master)](https://travis-ci.org/brandur/redis-cell)
 
 A Redis module that provides rate limiting in Redis as a single command.
 Implements the fairly sophisticated [generic cell rate algorithm][gcra] (GCRA)
@@ -10,16 +10,16 @@ limiting, but because it's not built in, it's very common for companies and
 organizations to implement their own rate limiting logic on top of Redis (I've
 seen this at both Heroku and Stripe for example). This can often result in
 naive implementations that take a few tries to get right. The directive of
-redis-throttle is to provide a language-agnostic rate limiter that's easily
+redis-cell is to provide a language-agnostic rate limiter that's easily
 pluggable into many cloud architectures.
 
-[Informal benchmarks][benchmarks] show that redis-throttle is pretty fast,
-taking a little under twice as long to run as a basic Redis `SET` (very roughly
-0.1 ms per command as seen from a Redis client).
+[Informal benchmarks][benchmarks] show that redis-cell is pretty fast, taking a
+little under twice as long to run as a basic Redis `SET` (very roughly 0.1 ms
+per command as seen from a Redis client).
 
 ## Install
 
-[Binaries for redis-throttle are available for Mac and Linux][releases]. Open
+[Binaries for redis-cell are available for Mac and Linux][releases]. Open
 an issue if there's interest in having binaries for architectures or operating
 systems that are not currently supported.
 
@@ -28,8 +28,8 @@ it (note that the extension will be **.dylib** instead of **.so** for Mac
 releases):
 
 ```
-$ tar -zxf redis-throttle-*.tar.gz
-$ cp libredis_throttle.so /path/to/modules/
+$ tar -zxf redis-cell-*.tar.gz
+$ cp libredis_cell.so /path/to/modules/
 ```
 
 **Or**, clone and build the project from source. You'll need to [install
@@ -37,22 +37,22 @@ Rust][rust-downloads] to do so (this may be as easy as a `brew install rust` if
 you're on Mac).
 
 ```
-$ git clone https://github.com/brandur/redis-throttle.git
-$ cd redis-throttle
+$ git clone https://github.com/brandur/redis-cell.git
+$ cd redis-cell
 $ cargo build --release
-$ cp target/release/libredis_throttle.dylib /path/to/modules/
+$ cp target/release/libredis_cell.dylib /path/to/modules/
 ```
 
 Run Redis pointing to the newly built module:
 
 ```
-redis-server --loadmodule /path/to/modules/libredis_throttle.so
+redis-server --loadmodule /path/to/modules/libredis_cell.so
 ```
 
 Alternatively add the following to a `redis.conf` file:
 
 ```
-loadmodule /path/to/modules/libredis_throttle.so
+loadmodule /path/to/modules/libredis_cell.so
 ```
 
 ## Usage
@@ -61,7 +61,7 @@ From Redis (try running `redis-cli`) use the new `throttle` command loaded by
 the module. It's used like this:
 
 ```
-TH.THROTTLE <key> <max_burst> <count per period> <period> [<quantity>]
+CL.THROTTLE <key> <max_burst> <count per period> <period> [<quantity>]
 ```
 
 Where `key` is an identifier to rate limit against. Examples might be:
@@ -73,7 +73,7 @@ Where `key` is an identifier to rate limit against. Examples might be:
 For example:
 
 ```
-TH.THROTTLE user123 15 30 60 1
+CL.THROTTLE user123 15 30 60 1
                ▲     ▲  ▲  ▲ ▲
                |     |  |  | └───── apply 1 token (default if omitted)
                |     |  └──┴─────── 30 tokens / 60 seconds
@@ -93,7 +93,7 @@ The command will respond with an array of integers:
 
 ```
 
-127.0.0.1:6379> TH.THROTTLE user123 15 30 60
+127.0.0.1:6379> CL.THROTTLE user123 15 30 60
 1) (integer) 0
 2) (integer) 16
 3) (integer) 15
@@ -119,13 +119,13 @@ The meaning of each array item is:
 Implement different types of rate limiting by using different key names:
 
 ```
-TH.THROTTLE user123-read-rate 15 30 60
-TH.THROTTLE user123-write-rate 5 10 60
+CL.THROTTLE user123-read-rate 15 30 60
+CL.THROTTLE user123-write-rate 5 10 60
 ```
 
 ## On Rust
 
-redis-throttle is written in Rust and uses the language's FFI module to
+redis-cell is written in Rust and uses the language's FFI module to
 interact with [Redis' own module system][redis-modules]. Rust makes a very good
 fit here because it doesn't need a GC or otherwise have any runtime of its own.
 
@@ -142,5 +142,5 @@ This is free software under the terms of MIT the license (see the file
 [benchmarks]: https://gist.github.com/brandur/90698498bd543598d00df46e32be3268
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
 [redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
-[releases]: https://github.com/brandur/redis-throttle/releases
+[releases]: https://github.com/brandur/redis-cell/releases
 [rust-downloads]: https://www.rust-lang.org/en-US/downloads.html

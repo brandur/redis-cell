@@ -16,5 +16,5 @@ project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-[Unreleased]: https://github.com/brandur/redis-throttle/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/brandur/redis-throttle/compare/v0.0.8...v0.1.0
+[Unreleased]: https://github.com/brandur/redis-cell/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/brandur/redis-cell/compare/v0.0.8...v0.1.0

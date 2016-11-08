@@ -4,17 +4,17 @@ extern crate time;
 #[macro_use]
 mod macros;
 
+pub mod cell;
 pub mod error;
 mod redis;
-pub mod throttle;
 
-use error::ThrottleError;
+use cell::store;
+use error::CellError;
 use libc::c_int;
 use redis::Command;
 use redis::raw;
-use throttle::store;
 
-const MODULE_NAME: &'static str = "redis-throttle";
+const MODULE_NAME: &'static str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
@@ -24,17 +24,18 @@ struct ThrottleCommand {
 impl Command for ThrottleCommand {
     // Should return the name of the command to be registered.
     fn name(&self) -> &'static str {
-        "th.throttle"
+        "cl.throttle"
     }
 
     // Run the command.
-    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
+    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), CellError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: throttle <key> <max_burst> <count per period> \
-                               <period> [<quantity>]"));
+            return Err(error!("Usage: {} <key> <max_burst> <count per period> \
+                               <period> [<quantity>]",
+                              self.name()));
         }
 
-        // the first argument is command name "throttle" (ignore it)
+        // the first argument is command name "cl.throttle" (ignore it)
         let key = args[1];
         let max_burst = try!(parse_i64(args[2]));
         let count = try!(parse_i64(args[3]));
@@ -48,12 +49,12 @@ impl Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let mut store = store::InternalRedisStore::new(&r);
-        let rate = throttle::Rate::per_period(count, time::Duration::seconds(period));
-        let mut limiter = throttle::RateLimiter::new(&mut store,
-                                                     throttle::RateQuota {
-                                                         max_burst: max_burst,
-                                                         max_rate: rate,
-                                                     });
+        let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
+        let mut limiter = cell::RateLimiter::new(&mut store,
+                                                 cell::RateQuota {
+                                                     max_burst: max_burst,
+                                                     max_rate: rate,
+                                                 });
 
         let (throttled, rate_limit_result) = try!(limiter.rate_limit(key, quantity));
 
@@ -117,7 +118,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
     return raw::Status::Ok;
 }
 
-fn parse_i64(arg: &str) -> Result<i64, ThrottleError> {
+fn parse_i64(arg: &str) -> Result<i64, CellError> {
     arg.parse::<i64>()
         .map_err(|_| error!("Couldn't parse as integer: {}", arg))
 }

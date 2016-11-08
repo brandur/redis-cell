@@ -6,7 +6,7 @@ extern crate time;
 
 pub mod store;
 
-use error::ThrottleError;
+use error::CellError;
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
 // operations before returning an error.
@@ -97,7 +97,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
     pub fn rate_limit(&mut self,
                       key: &str,
                       quantity: i64)
-                      -> Result<(bool, RateLimitResult), ThrottleError> {
+                      -> Result<(bool, RateLimitResult), CellError> {
         let mut rlc = RateLimitResult {
             limit: self.limit,
             remaining: 0,
@@ -123,8 +123,8 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
         // and beat us to the punch. In that case only one limiter should win.
         //
         // Note that when running with our internal Redis store (i.e. the
-        // normal case for the redis-throttle project) this is actually *not*
-        // true because our entire operation will execute atomically.
+        // normal case for the redis-cell project) this is actually *not* true
+        // because our entire operation will execute atomically.
         let mut i = 0;
         loop {
             log_debug!(self.store, "iteration = {}", i);
@@ -267,9 +267,9 @@ fn nanoseconds(x: time::Tm) -> i64 {
 mod tests {
     extern crate time;
 
-    use error::ThrottleError;
+    use error::CellError;
     use std::error::Error;
-    use throttle::*;
+    use cell::*;
 
     #[test]
     fn it_creates_rates_from_days() {
@@ -457,7 +457,7 @@ mod tests {
                                      old: i64,
                                      new: i64,
                                      ttl: time::Duration)
-                                     -> Result<bool, ThrottleError> {
+                                     -> Result<bool, CellError> {
             if self.fail_updates {
                 Ok(false)
             } else {
@@ -465,7 +465,7 @@ mod tests {
             }
         }
 
-        fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+        fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
             let tup = try!(self.store.get_with_time(key));
             Ok((tup.0, self.clock))
         }
@@ -478,7 +478,7 @@ mod tests {
                                       key: &str,
                                       value: i64,
                                       ttl: time::Duration)
-                                      -> Result<bool, ThrottleError> {
+                                      -> Result<bool, CellError> {
             if self.fail_updates {
                 Ok(false)
             } else {

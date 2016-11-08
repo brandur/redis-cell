@@ -1,6 +1,6 @@
 extern crate time;
 
-use error::ThrottleError;
+use error::CellError;
 use redis;
 use std::collections::HashMap;
 
@@ -21,13 +21,13 @@ pub trait Store {
                                  old: i64,
                                  new: i64,
                                  ttl: time::Duration)
-                                 -> Result<bool, ThrottleError>;
+                                 -> Result<bool, CellError>;
 
     /// Gets the given key's value and the current time as dictated by the
     /// store (this is done so that rate limiters running on a variety of
     /// different nodes can operate with a consistent clock instead of using
     /// their own). If the key was unset, -1 is returned.
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError>;
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError>;
 
     /// Logs a debug message to the data store.
     fn log_debug(&self, message: &str);
@@ -38,7 +38,7 @@ pub trait Store {
                                   key: &str,
                                   value: i64,
                                   ttl: time::Duration)
-                                  -> Result<bool, ThrottleError>;
+                                  -> Result<bool, CellError>;
 }
 
 /// MemoryStore is a simple implementation of Store that persists data in an
@@ -73,7 +73,7 @@ impl Store for MemoryStore {
                                  old: i64,
                                  new: i64,
                                  _: time::Duration)
-                                 -> Result<bool, ThrottleError> {
+                                 -> Result<bool, CellError> {
         match self.map.get(key) {
             Some(n) if *n != old => return Ok(false),
             _ => (),
@@ -83,7 +83,7 @@ impl Store for MemoryStore {
         Ok(true)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
         match self.map.get(key) {
             Some(n) => Ok((*n, time::now_utc())),
             None => Ok((-1, time::now_utc())),
@@ -100,7 +100,7 @@ impl Store for MemoryStore {
                                   key: &str,
                                   value: i64,
                                   _: time::Duration)
-                                  -> Result<bool, ThrottleError> {
+                                  -> Result<bool, CellError> {
         match self.map.get(key) {
             Some(_) => Ok(false),
             None => {
@@ -131,7 +131,7 @@ impl<'a> Store for InternalRedisStore<'a> {
                                  old: i64,
                                  new: i64,
                                  ttl: time::Duration)
-                                 -> Result<bool, ThrottleError> {
+                                 -> Result<bool, CellError> {
         let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
             redis::Reply::Nil => Ok(false),
@@ -155,8 +155,8 @@ impl<'a> Store for InternalRedisStore<'a> {
         }
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), ThrottleError> {
-        // TODO: currently leveraging that CommandError and ThrottleError are the
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+        // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
         let val = try!(self.r.coerce_integer(self.r.get(key)));
         match val {
@@ -174,7 +174,7 @@ impl<'a> Store for InternalRedisStore<'a> {
                                   key: &str,
                                   value: i64,
                                   ttl: time::Duration)
-                                  -> Result<bool, ThrottleError> {
+                                  -> Result<bool, CellError> {
         let val = try!(self.r.setnx(key, value.to_string().as_str()));
         if ttl.num_seconds() > 1 {
             try!(self.r.expire(key, ttl.num_seconds()));
@@ -188,7 +188,7 @@ impl<'a> Store for InternalRedisStore<'a> {
 mod tests {
     extern crate time;
 
-    use throttle::store::*;
+    use cell::store::*;
 
     #[test]
     fn it_performs_compare_and_swap_with_ttl() {

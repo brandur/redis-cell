@@ -1,9 +1,9 @@
 macro_rules! error {
     ($message:expr) => {
-        ThrottleError::generic($message)
+        CellError::generic($message)
     };
     ($message:expr, $($arg:tt)*) => {
-        ThrottleError::generic(format!($message, $($arg)+).as_str())
+        CellError::generic(format!($message, $($arg)+).as_str())
     }
 }
 

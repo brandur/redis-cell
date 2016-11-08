@@ -32,7 +32,7 @@ build_and_test() {
     # Sanity check the file type.
     #
     # Naming will be .dylib on OSX and .so elsewhere.
-    file target/$TARGET/debug/libredis_throttle.*
+    file target/$TARGET/debug/libredis_cell.*
 }
 
 main() {
