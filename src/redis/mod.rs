@@ -4,7 +4,7 @@
 // instead.
 pub mod raw;
 
-use error::ThrottleError;
+use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 use std::iter;
@@ -16,7 +16,7 @@ pub trait Command {
     fn name(&self) -> &'static str;
 
     // Run the command.
-    fn run(&self, r: Redis, args: &[&str]) -> Result<(), ThrottleError>;
+    fn run(&self, r: Redis, args: &[&str]) -> Result<(), CellError>;
 
     // Should return any flags to be registered with the name as a string
     // separated list. See the Redis module API documentation for a complete
@@ -63,7 +63,7 @@ pub struct Redis {
 }
 
 impl Redis {
-    pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, ThrottleError> {
+    pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, CellError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
         // We use a "format" string to tell redis what types we're passing in.
@@ -140,8 +140,8 @@ impl Redis {
     /// integer response. All other types of replies are pass through
     /// unmodified.
     pub fn coerce_integer(&self,
-                          reply_res: Result<Reply, ThrottleError>)
-                          -> Result<Reply, ThrottleError> {
+                          reply_res: Result<Reply, CellError>)
+                          -> Result<Reply, CellError> {
         match reply_res {
             Ok(Reply::String(s)) => {
                 match s.parse::<i64>() {
@@ -153,12 +153,12 @@ impl Redis {
         }
     }
 
-    pub fn expire(&self, key: &str, ttl: i64) -> Result<bool, ThrottleError> {
+    pub fn expire(&self, key: &str, ttl: i64) -> Result<bool, CellError> {
         let res = try!(self.call("EXPIRE", &[key, ttl.to_string().as_str()]));
         parse_bool(res)
     }
 
-    pub fn get(&self, key: &str) -> Result<Reply, ThrottleError> {
+    pub fn get(&self, key: &str) -> Result<Reply, CellError> {
         self.call("GET", &[key])
     }
 
@@ -178,17 +178,17 @@ impl Redis {
     ///
     /// Used by invoking once with the expected length and then calling any
     /// combination of the other reply_* methods exactly that number of times.
-    pub fn reply_array(&self, len: i64) -> Result<(), ThrottleError> {
+    pub fn reply_array(&self, len: i64) -> Result<(), CellError> {
         handle_status(raw::reply_with_array(self.ctx, len as c_long),
                       "Could not reply with long")
     }
 
-    pub fn reply_integer(&self, integer: i64) -> Result<(), ThrottleError> {
+    pub fn reply_integer(&self, integer: i64) -> Result<(), CellError> {
         handle_status(raw::reply_with_long_long(self.ctx, integer as c_longlong),
                       "Could not reply with longlong")
     }
 
-    pub fn reply_string(&self, message: &str) -> Result<(), ThrottleError> {
+    pub fn reply_string(&self, message: &str) -> Result<(), CellError> {
         let redis_str = raw::create_string(self.ctx,
                                            format!("{}\0", message).as_ptr(),
                                            message.len());
@@ -198,17 +198,17 @@ impl Redis {
         res
     }
 
-    pub fn set(&self, key: &str, val: &str) -> Result<(), ThrottleError> {
+    pub fn set(&self, key: &str, val: &str) -> Result<(), CellError> {
         let res = try!(self.call("SET", &[key, val]));
         parse_simple_string(res)
     }
 
-    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), ThrottleError> {
+    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), CellError> {
         let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
         parse_simple_string(res)
     }
 
-    pub fn setnx(&self, key: &str, val: &str) -> Result<bool, ThrottleError> {
+    pub fn setnx(&self, key: &str, val: &str) -> Result<bool, CellError> {
         let res = try!(self.call("SETNX", &[key, val]));
         parse_bool(res)
     }
@@ -226,7 +226,7 @@ pub enum Reply {
     Unknown,
 }
 
-fn handle_status(status: raw::Status, message: &str) -> Result<(), ThrottleError> {
+fn handle_status(status: raw::Status, message: &str) -> Result<(), CellError> {
     match status {
         raw::Status::Ok => Ok(()),
         raw::Status::Err => Err(error!(message)),
@@ -234,7 +234,7 @@ fn handle_status(status: raw::Status, message: &str) -> Result<(), ThrottleError
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
-                        -> Result<Reply, ThrottleError> {
+                        -> Result<Reply, CellError> {
     match raw::call_reply_type(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::call_reply_integer(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
@@ -249,7 +249,7 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
         raw::ReplyType::Unknown => Ok(Reply::Unknown),
 
         // TODO: I need to actually extract the error from Redis here. Also, it
-        // should probably be its own non-generic variety of ThrottleError.
+        // should probably be its own non-generic variety of CellError.
         raw::ReplyType::Error => Err(error!("Redis replied with an error.")),
 
         other => Err(error!("Don't yet handle Redis type: {:?}", other)),
@@ -257,7 +257,7 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
 }
 
 fn manifest_redis_string(redis_str: *mut raw::RedisModuleString)
-                         -> Result<String, ThrottleError> {
+                         -> Result<String, CellError> {
     let mut length: size_t = 0;
     let bytes = raw::string_ptr_len(redis_str, &mut length);
     from_byte_string(bytes, length)
@@ -265,7 +265,7 @@ fn manifest_redis_string(redis_str: *mut raw::RedisModuleString)
 
 fn parse_args(argv: *mut *mut raw::RedisModuleString,
               argc: c_int)
-              -> Result<Vec<String>, ThrottleError> {
+              -> Result<Vec<String>, CellError> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str = unsafe { *argv.offset(i as isize) };
@@ -276,7 +276,7 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
 
 fn from_byte_string(byte_str: *const u8,
                     length: size_t)
-                    -> Result<String, ThrottleError> {
+                    -> Result<String, CellError> {
     let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
     for j in 0..length {
         let byte: u8 = unsafe { *byte_str.offset(j as isize) };
@@ -285,11 +285,11 @@ fn from_byte_string(byte_str: *const u8,
 
     match String::from_utf8(vec_str) {
         Ok(s) => Ok(s),
-        Err(e) => Err(ThrottleError::String(e)),
+        Err(e) => Err(CellError::String(e)),
     }
 }
 
-fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
+fn parse_bool(reply: Reply) -> Result<bool, CellError> {
     match reply {
         // EXPIRE and SETNX are supposed to return a boolean false in their
         // failure case, but this seems to come back as an "unknown" instead so
@@ -301,7 +301,7 @@ fn parse_bool(reply: Reply) -> Result<bool, ThrottleError> {
     }
 }
 
-fn parse_simple_string(reply: Reply) -> Result<(), ThrottleError> {
+fn parse_simple_string(reply: Reply) -> Result<(), CellError> {
     match reply {
         // may also return a Redis null, but not with the parameters that
         // we currently allow

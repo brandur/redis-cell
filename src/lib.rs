@@ -8,7 +8,7 @@ pub mod error;
 mod redis;
 pub mod throttle;
 
-use error::ThrottleError;
+use error::CellError;
 use libc::c_int;
 use redis::Command;
 use redis::raw;
@@ -28,7 +28,7 @@ impl Command for ThrottleCommand {
     }
 
     // Run the command.
-    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
+    fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), CellError> {
         if args.len() != 5 && args.len() != 6 {
             return Err(error!("Usage: {} <key> <max_burst> <count per period> \
                                <period> [<quantity>]",
@@ -118,7 +118,7 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
     return raw::Status::Ok;
 }
 
-fn parse_i64(arg: &str) -> Result<i64, ThrottleError> {
+fn parse_i64(arg: &str) -> Result<i64, CellError> {
     arg.parse::<i64>()
         .map_err(|_| error!("Couldn't parse as integer: {}", arg))
 }
