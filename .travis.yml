@@ -9,7 +9,7 @@ notifications:
 
 env:
   global:
-    - PROJECT_NAME=redis-throttle
+    - PROJECT_NAME=redis-cell
 
 matrix:
   allow_failures:

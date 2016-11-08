@@ -14,7 +14,7 @@ use redis::Command;
 use redis::raw;
 use throttle::store;
 
-const MODULE_NAME: &'static str = "redis-throttle";
+const MODULE_NAME: &'static str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
@@ -24,17 +24,18 @@ struct ThrottleCommand {
 impl Command for ThrottleCommand {
     // Should return the name of the command to be registered.
     fn name(&self) -> &'static str {
-        "th.throttle"
+        "cl.throttle"
     }
 
     // Run the command.
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), ThrottleError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: throttle <key> <max_burst> <count per period> \
-                               <period> [<quantity>]"));
+            return Err(error!("Usage: {} <key> <max_burst> <count per period> \
+                               <period> [<quantity>]",
+                              self.name()));
         }
 
-        // the first argument is command name "throttle" (ignore it)
+        // the first argument is command name "cl.throttle" (ignore it)
         let key = args[1];
         let max_burst = try!(parse_i64(args[2]));
         let count = try!(parse_i64(args[3]));

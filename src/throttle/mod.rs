@@ -123,8 +123,8 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
         // and beat us to the punch. In that case only one limiter should win.
         //
         // Note that when running with our internal Redis store (i.e. the
-        // normal case for the redis-throttle project) this is actually *not*
-        // true because our entire operation will execute atomically.
+        // normal case for the redis-cell project) this is actually *not* true
+        // because our entire operation will execute atomically.
         let mut i = 0;
         loop {
             log_debug!(self.store, "iteration = {}", i);

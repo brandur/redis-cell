@@ -1,5 +1,5 @@
 [package]
-name = "redis-throttle"
+name = "redis-cell"
 version = "0.1.0"
 authors = ["Brandur <brandur@mutelight.org>"]
 build = "build.rs"
