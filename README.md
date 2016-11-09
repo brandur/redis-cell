@@ -92,7 +92,6 @@ easily be reconfigured on the fly.
 The command will respond with an array of integers:
 
 ```
-
 127.0.0.1:6379> CL.THROTTLE user123 15 30 60
 1) (integer) 0
 2) (integer) 16
