@@ -132,16 +132,16 @@ impl<'a> Store for InternalRedisStore<'a> {
                                  new: i64,
                                  ttl: time::Duration)
                                  -> Result<bool, CellError> {
-        let val = try!(self.r.coerce_integer(self.r.get(key)));
+        let val = self.r.coerce_integer(self.r.get(key))?;
         match val {
             redis::Reply::Nil => Ok(false),
 
             // Still the old value: perform the swap.
             redis::Reply::Integer(n) if n == old => {
                 if ttl.num_seconds() > 1 {
-                    try!(self.r.setex(key, ttl.num_seconds(), new.to_string().as_str()));
+                    self.r.setex(key, ttl.num_seconds(), new.to_string().as_str())?;
                 } else {
-                    try!(self.r.set(key, new.to_string().as_str()));
+                    self.r.set(key, new.to_string().as_str())?;
                 }
 
                 Ok(true)
@@ -158,7 +158,7 @@ impl<'a> Store for InternalRedisStore<'a> {
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
-        let val = try!(self.r.coerce_integer(self.r.get(key)));
+        let val = self.r.coerce_integer(self.r.get(key))?;
         match val {
             redis::Reply::Nil => Ok((-1, time::now_utc())),
             redis::Reply::Integer(n) => Ok((n, time::now_utc())),
@@ -175,9 +175,9 @@ impl<'a> Store for InternalRedisStore<'a> {
                                   value: i64,
                                   ttl: time::Duration)
                                   -> Result<bool, CellError> {
-        let val = try!(self.r.setnx(key, value.to_string().as_str()));
+        let val = self.r.setnx(key, value.to_string().as_str())?;
         if ttl.num_seconds() > 1 {
-            try!(self.r.expire(key, ttl.num_seconds()));
+            self.r.expire(key, ttl.num_seconds())?;
         }
         Ok(val)
     }

@@ -37,11 +37,11 @@ impl Command for ThrottleCommand {
 
         // the first argument is command name "cl.throttle" (ignore it)
         let key = args[1];
-        let max_burst = try!(parse_i64(args[2]));
-        let count = try!(parse_i64(args[3]));
-        let period = try!(parse_i64(args[4]));
+        let max_burst = parse_i64(args[2])?;
+        let count = parse_i64(args[3])?;
+        let period = parse_i64(args[4])?;
         let quantity = match args.get(5) {
-            Some(n) => try!(parse_i64(n)),
+            Some(n) => parse_i64(n)?,
             None => 1,
         };
 
@@ -56,18 +56,18 @@ impl Command for ThrottleCommand {
                                                      max_rate: rate,
                                                  });
 
-        let (throttled, rate_limit_result) = try!(limiter.rate_limit(key, quantity));
+        let (throttled, rate_limit_result) = limiter.rate_limit(key, quantity)?;
 
         // Reply with an array containing rate limiting results. Note that
         // Redis' support for interesting data types is quite weak, so we have
         // to jam a few square pegs into round holes. It's a little messy, but
         // the interface comes out as pretty workable.
-        try!(r.reply_array(5));
-        try!(r.reply_integer(if throttled { 1 } else { 0 }));
-        try!(r.reply_integer(rate_limit_result.limit));
-        try!(r.reply_integer(rate_limit_result.remaining));
-        try!(r.reply_integer(rate_limit_result.retry_after.num_seconds()));
-        try!(r.reply_integer(rate_limit_result.reset_after.num_seconds()));
+        r.reply_array(5)?;
+        r.reply_integer(if throttled { 1 } else { 0 })?;
+        r.reply_integer(rate_limit_result.limit)?;
+        r.reply_integer(rate_limit_result.remaining)?;
+        r.reply_integer(rate_limit_result.retry_after.num_seconds())?;
+        r.reply_integer(rate_limit_result.reset_after.num_seconds())?;
 
         Ok(())
     }

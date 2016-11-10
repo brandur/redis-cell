@@ -131,7 +131,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
 
             // tat refers to the theoretical arrival time that would be expected
             // from equally spaced requests at exactly the rate limit.
-            let (tat_val, now) = try!(self.store.get_with_time(key));
+            let (tat_val, now) = self.store.get_with_time(key)?;
 
             let tat = match tat_val {
                 -1 => now,
@@ -180,11 +180,11 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
             // Both of these cases are designed to work around the fact that
             // another limiter could be running in parallel.
             let updated = if tat_val == -1 {
-                try!(self.store
-                    .set_if_not_exists_with_ttl(key, new_tat_ns, ttl))
+                self.store
+                    .set_if_not_exists_with_ttl(key, new_tat_ns, ttl)?
             } else {
-                try!(self.store
-                    .compare_and_swap_with_ttl(key, tat_val, new_tat_ns, ttl))
+                self.store
+                    .compare_and_swap_with_ttl(key, tat_val, new_tat_ns, ttl)?
             };
 
             if updated {
@@ -466,7 +466,7 @@ mod tests {
         }
 
         fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
-            let tup = try!(self.store.get_with_time(key));
+            let tup = self.store.get_with_time(key)?;
             Ok((tup.0, self.clock))
         }
 
