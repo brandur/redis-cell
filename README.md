@@ -43,6 +43,8 @@ $ cargo build --release
 $ cp target/release/libredis_cell.dylib /path/to/modules/
 ```
 
+**Note that Rust 1.13.0+ is required.**
+
 Run Redis pointing to the newly built module:
 
 ```
