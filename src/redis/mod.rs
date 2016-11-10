@@ -154,7 +154,7 @@ impl Redis {
     }
 
     pub fn expire(&self, key: &str, ttl: i64) -> Result<bool, CellError> {
-        let res = try!(self.call("EXPIRE", &[key, ttl.to_string().as_str()]));
+        let res = self.call("EXPIRE", &[key, ttl.to_string().as_str()])?;
         parse_bool(res)
     }
 
@@ -199,17 +199,17 @@ impl Redis {
     }
 
     pub fn set(&self, key: &str, val: &str) -> Result<(), CellError> {
-        let res = try!(self.call("SET", &[key, val]));
+        let res = self.call("SET", &[key, val])?;
         parse_simple_string(res)
     }
 
     pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), CellError> {
-        let res = try!(self.call("SETEX", &[key, ttl.to_string().as_str(), val]));
+        let res = self.call("SETEX", &[key, ttl.to_string().as_str(), val])?;
         parse_simple_string(res)
     }
 
     pub fn setnx(&self, key: &str, val: &str) -> Result<bool, CellError> {
-        let res = try!(self.call("SETNX", &[key, val]));
+        let res = self.call("SETNX", &[key, val])?;
         parse_bool(res)
     }
 }
@@ -269,7 +269,7 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str = unsafe { *argv.offset(i as isize) };
-        args.push(try!(manifest_redis_string(redis_str)));
+        args.push(manifest_redis_string(redis_str)?);
     }
     Ok(args)
 }
