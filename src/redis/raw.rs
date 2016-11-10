@@ -64,25 +64,27 @@ pub fn init(ctx: *mut RedisModuleCtx,
 
 
 pub fn call_reply_type(reply: *mut RedisModuleCallReply) -> ReplyType {
-    RedisModule_CallReplyType(reply)
+    unsafe { RedisModule_CallReplyType(reply) }
 }
 
 pub fn free_call_reply(reply: *mut RedisModuleCallReply) {
-    RedisModule_FreeCallReply(reply);
+    unsafe {
+        RedisModule_FreeCallReply(reply);
+    }
 }
 
 pub fn call_reply_integer(reply: *mut RedisModuleCallReply) -> c_longlong {
-    RedisModule_CallReplyInteger(reply)
+    unsafe { RedisModule_CallReplyInteger(reply) }
 }
 
 pub fn call_reply_string_ptr(str: *mut RedisModuleCallReply,
                              len: *mut size_t)
                              -> *const u8 {
-    RedisModule_CallReplyStringPtr(str, len)
+    unsafe { RedisModule_CallReplyStringPtr(str, len) }
 }
 
 pub fn close_key(kp: *mut RedisModuleKey) {
-    RedisModule_CloseKey(kp)
+    unsafe { RedisModule_CloseKey(kp) }
 }
 
 pub fn create_command(ctx: *mut RedisModuleCtx,
@@ -93,59 +95,67 @@ pub fn create_command(ctx: *mut RedisModuleCtx,
                       lastkey: c_int,
                       keystep: c_int)
                       -> Status {
-    RedisModule_CreateCommand(ctx, name, cmdfunc, strflags, firstkey, lastkey, keystep)
+    unsafe {
+        RedisModule_CreateCommand(ctx,
+                                  name,
+                                  cmdfunc,
+                                  strflags,
+                                  firstkey,
+                                  lastkey,
+                                  keystep)
+    }
 }
 
 pub fn create_string(ctx: *mut RedisModuleCtx,
                      ptr: *const u8,
                      len: size_t)
                      -> *mut RedisModuleString {
-    RedisModule_CreateString(ctx, ptr, len)
+    unsafe { RedisModule_CreateString(ctx, ptr, len) }
 }
 
 pub fn free_string(ctx: *mut RedisModuleCtx, str: *mut RedisModuleString) {
-    RedisModule_FreeString(ctx, str)
+    unsafe { RedisModule_FreeString(ctx, str) }
 }
 
 pub fn get_selected_db(ctx: *mut RedisModuleCtx) -> c_int {
-    RedisModule_GetSelectedDb(ctx)
+    unsafe { RedisModule_GetSelectedDb(ctx) }
 }
 
 pub fn log(ctx: *mut RedisModuleCtx, level: *const u8, fmt: *const u8) {
-    RedisModule_Log(ctx, level, fmt)
+    unsafe { RedisModule_Log(ctx, level, fmt) }
 }
 
 pub fn open_key(ctx: *mut RedisModuleCtx,
                 keyname: *mut RedisModuleString,
                 mode: KeyMode)
                 -> *mut RedisModuleKey {
-    RedisModule_OpenKey(ctx, keyname, mode)
+    unsafe { RedisModule_OpenKey(ctx, keyname, mode) }
 }
 
 pub fn reply_with_array(ctx: *mut RedisModuleCtx, len: c_long) -> Status {
-    RedisModule_ReplyWithArray(ctx, len)
+    unsafe { RedisModule_ReplyWithArray(ctx, len) }
 }
 
 pub fn reply_with_error(ctx: *mut RedisModuleCtx, err: *const u8) {
-    RedisModule_ReplyWithError(ctx, err)
+    unsafe { RedisModule_ReplyWithError(ctx, err) }
 }
 
 pub fn reply_with_long_long(ctx: *mut RedisModuleCtx, ll: c_longlong) -> Status {
-    RedisModule_ReplyWithLongLong(ctx, ll)
+    unsafe { RedisModule_ReplyWithLongLong(ctx, ll) }
 }
 
 pub fn reply_with_string(ctx: *mut RedisModuleCtx,
                          str: *mut RedisModuleString)
                          -> Status {
-    RedisModule_ReplyWithString(ctx, str)
+    unsafe { RedisModule_ReplyWithString(ctx, str) }
 }
 
 pub fn string_ptr_len(str: *mut RedisModuleString, len: *mut size_t) -> *const u8 {
-    RedisModule_StringPtrLen(str, len)
+    unsafe { RedisModule_StringPtrLen(str, len) }
 }
 
 pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Status {
-    RedisModule_StringSet(key, str)
+    unsafe { RedisModule_StringSet(key, str) }
 }
 
 // Redis doesn't make this easy for us by exporting a library, so instead what
@@ -240,7 +250,7 @@ pub mod call1 {
                 fmt: *const u8,
                 arg0: *mut raw::RedisModuleString)
                 -> *mut raw::RedisModuleCallReply {
-        RedisModule_Call(ctx, cmdname, fmt, arg0)
+        unsafe { RedisModule_Call(ctx, cmdname, fmt, arg0) }
     }
 
     #[allow(improper_ctypes)]
@@ -263,7 +273,7 @@ pub mod call2 {
                 arg0: *mut raw::RedisModuleString,
                 arg1: *mut raw::RedisModuleString)
                 -> *mut raw::RedisModuleCallReply {
-        RedisModule_Call(ctx, cmdname, fmt, arg0, arg1)
+        unsafe { RedisModule_Call(ctx, cmdname, fmt, arg0, arg1) }
     }
 
     #[allow(improper_ctypes)]
@@ -288,7 +298,7 @@ pub mod call3 {
                 arg1: *mut raw::RedisModuleString,
                 arg2: *mut raw::RedisModuleString)
                 -> *mut raw::RedisModuleCallReply {
-        RedisModule_Call(ctx, cmdname, fmt, arg0, arg1, arg2)
+        unsafe { RedisModule_Call(ctx, cmdname, fmt, arg0, arg1, arg2) }
     }
 
     #[allow(improper_ctypes)]
