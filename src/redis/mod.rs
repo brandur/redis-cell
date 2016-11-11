@@ -289,10 +289,6 @@ fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, CellE
 
 fn parse_bool(reply: Reply) -> Result<bool, CellError> {
     match reply {
-        // EXPIRE and SETNX are supposed to return a boolean false in their
-        // failure case, but this seems to come back as an "unknown" instead so
-        // handle that as well.
-        Reply::Unknown => Ok(false),
         Reply::Integer(n) if n == 0 => Ok(false),
         Reply::Integer(n) if n == 1 => Ok(true),
         r => Err(error!("Command returned non-boolean value (type was {:?}).", r)),
