@@ -244,10 +244,7 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
         raw::ReplyType::String => {
             let mut length: size_t = 0;
             let bytes = raw::call_reply_string_ptr(reply, &mut length);
-            match from_byte_string(bytes, length) {
-                Ok(s) => Ok(Reply::String(s)),
-                Err(e) => Err(e),
-            }
+            from_byte_string(bytes, length).map(|s| Reply::String(s))
         }
         raw::ReplyType::Unknown => Ok(Reply::Unknown),
 
