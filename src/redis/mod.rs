@@ -89,6 +89,9 @@ impl Redis {
                 // reply with a -1 "unknown" to all calls). This is still
                 // unexplained and I need to do more legwork in understanding
                 // this.
+                //
+                // Still, this works fine and will continue to work as long as
+                // it's left unchanged.
                 raw::call1::call(self.ctx,
                                  format!("{}\0", command).as_ptr(),
                                  format!("{}\0", format).as_ptr(),
@@ -134,7 +137,7 @@ impl Redis {
     /// Redis is pretty dumb about data types. It nominally supports strings
     /// versus integers, but an integer set in the store will continue to look
     /// like a string (i.e. "1234") until some other operation like INCR forces
-    /// it coercion.
+    /// its coercion.
     ///
     /// This method coerces a Redis string that looks like an integer into an
     /// integer response. All other types of replies are pass through
