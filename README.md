@@ -7,11 +7,12 @@ process.
 
 The primitives exposed by Redis are perfect for doing work around rate
 limiting, but because it's not built in, it's very common for companies and
-organizations to implement their own rate limiting logic on top of Redis (I've
-seen this at both Heroku and Stripe for example). This can often result in
-naive implementations that take a few tries to get right. The directive of
-redis-cell is to provide a language-agnostic rate limiter that's easily
-pluggable into many cloud architectures.
+organizations to implement their own rate limiting logic on top of Redis using
+a mixture of basic commands and Lua scripts (I've seen this at both Heroku and
+Stripe for example). This can often result in naive implementations that take a
+few tries to get right. The directive of redis-cell is to provide a
+language-agnostic rate limiter that's easily pluggable into many cloud
+architectures.
 
 [Informal benchmarks][benchmarks] show that redis-cell is pretty fast, taking a
 little under twice as long to run as a basic Redis `SET` (very roughly 0.1 ms
@@ -109,7 +110,7 @@ The meaning of each array item is:
     * `1` indicates that the action was limited/blocked.
 2. The total limit of the key (`max_burst` + 1). This is equivalent to the
    common `X-RateLimit-Limit` HTTP header.
-3. The remaining limit of the key. (equivalent to `X-RateLimit-Remaining`.
+3. The remaining limit of the key. Equivalent to `X-RateLimit-Remaining`.
 4. The number of seconds until the user should retry, and always `-1` if the
    action was allowed. Equivalent to `Retry-After`.
 5. The number of seconds until the limit will reset to its maximum capacity.
@@ -126,9 +127,9 @@ CL.THROTTLE user123-write-rate 5 10 60
 
 ## On Rust
 
-redis-cell is written in Rust and uses the language's FFI module to
-interact with [Redis' own module system][redis-modules]. Rust makes a very good
-fit here because it doesn't need a GC or otherwise have any runtime of its own.
+redis-cell is written in Rust and uses the language's FFI module to interact
+with [Redis' own module system][redis-modules]. Rust makes a very good fit here
+because it doesn't need a GC and is bootstrapped with only a tiny runtime.
 
 The author of this library is of the opinion that writing modules in Rust
 instead of C will convey similar performance characteristics, but result in an
