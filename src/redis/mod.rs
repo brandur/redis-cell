@@ -166,14 +166,17 @@ impl Redis {
         let key_str =
             raw::create_string(self.ctx, format!("{}\0", key).as_ptr(), key.len());
         let key = raw::open_key(self.ctx, key_str, raw::KeyMode::Read);
+        let null_key: *mut raw::RedisModuleKey = ptr::null_mut();
 
-        let mut length: size_t = 0;
-        let bytes = raw::string_dma(key, &mut length, raw::KeyMode::Read);
-        let null: *const u8 = ptr::null();
-        let s = if bytes == null {
+        let s = if key == null_key {
             None
         } else {
-            let bs = from_byte_string(bytes, length)?;
+            let mut length: size_t = 0;
+
+            // TODO: memory leak
+            let bs =
+                from_byte_string(raw::string_dma(key, &mut length, raw::KeyMode::Read),
+                                 length)?;
             Some(bs)
         };
 
