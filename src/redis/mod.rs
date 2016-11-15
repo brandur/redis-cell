@@ -170,6 +170,8 @@ impl Redis {
         self.log(LogLevel::Notice, message);
     }
 
+    /// Opens a Redis key for access. From there various other operations like
+    /// read, write, and expire are available on it.
     pub fn open_key(&self, key: &str, mode: KeyMode) -> RedisKey {
         RedisKey::open(self.ctx, key, mode)
     }
@@ -214,13 +216,8 @@ pub struct RedisKey {
 
 impl RedisKey {
     fn open(ctx: *mut raw::RedisModuleCtx, key: &str, mode: KeyMode) -> RedisKey {
-        let raw_mode = match mode {
-            KeyMode::Read => raw::KEYMODE_READ,
-            KeyMode::ReadWrite => raw::KEYMODE_READ | raw::KEYMODE_WRITE,
-            KeyMode::Write => raw::KEYMODE_WRITE,
-        };
         let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
-        let key_inner = raw::open_key(ctx, key_str, raw_mode);
+        let key_inner = raw::open_key(ctx, key_str, to_raw_mode(mode));
         RedisKey {
             ctx: ctx,
             key_inner: key_inner,
@@ -228,6 +225,12 @@ impl RedisKey {
         }
     }
 
+    /// Detects whether the value stored in a Redis key is empty.
+    ///
+    /// Note that an empty key can be reliably detected with `is_null` while in
+    /// read mode, but when asking for write Redis returns a non-null pointer
+    /// to allow us to write to even an empty key, so this function should be
+    /// used instead.
     pub fn is_empty(&self) -> Result<bool, CellError> {
         if self.is_null() {
             return Ok(true);
@@ -244,11 +247,11 @@ impl RedisKey {
         }
     }
 
-    // Detects whether the key pointer given to us by Redis is null.
-    //
-    // Note that Redis only returns a null pointer if we opened a key in read
-    // mode. If opened for writing, an unset key will be returned as a non-null
-    // value with reads returning empty strings.
+    /// Detects whether the key pointer given to us by Redis is null.
+    ///
+    /// Note that Redis only returns a null pointer if we opened a key in read
+    /// mode. If opened for writing, an unset key will be returned as a non-null
+    /// value with reads returning empty strings.
     pub fn is_null(&self) -> bool {
         let null_key: *mut raw::RedisModuleKey = ptr::null_mut();
         self.key_inner == null_key
@@ -383,5 +386,13 @@ fn parse_simple_string(reply: Reply) -> Result<(), CellError> {
         // we currently allow
         Reply::String(ref s) if s.as_str() == "OK" => Ok(()),
         r => Err(error!("Command returned non-string value (type was {:?}).", r)),
+    }
+}
+
+fn to_raw_mode(mode: KeyMode) -> raw::KeyMode {
+    match mode {
+        KeyMode::Read => raw::KEYMODE_READ,
+        KeyMode::ReadWrite => raw::KEYMODE_READ | raw::KEYMODE_WRITE,
+        KeyMode::Write => raw::KEYMODE_WRITE,
     }
 }
