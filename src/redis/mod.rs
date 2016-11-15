@@ -218,6 +218,8 @@ pub struct RedisKey {
     key_str: *mut raw::RedisModuleString,
 }
 
+/// RedisKey is an abstraction over a Redis key that allows readonly
+/// operations.
 impl RedisKey {
     fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
         let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
@@ -253,6 +255,8 @@ impl Drop for RedisKey {
     }
 }
 
+/// RedisKey is an abstraction over a Redis key that allows read and write
+/// operations.
 pub struct RedisKeyWritable {
     ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
