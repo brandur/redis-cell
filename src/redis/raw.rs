@@ -8,10 +8,11 @@ use libc::{c_int, c_long, c_longlong, size_t};
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
-#[derive(Debug, PartialEq)]
-pub enum KeyMode {
-    Read = (1 << 0),
-    Write = (1 << 1),
+bitflags! {
+    pub flags KeyMode: c_int {
+        const KEYMODE_READ = (1 << 0),
+        const KEYMODE_WRITE = (1 << 1),
+    }
 }
 
 #[derive(Debug, PartialEq)]

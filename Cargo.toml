@@ -8,6 +8,7 @@ build = "build.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+bitflags = "0.7.0"
 libc = "0.2.0"
 time = "0.1"
 

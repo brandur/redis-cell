@@ -132,16 +132,13 @@ impl<'a> Store for InternalRedisStore<'a> {
                                  new: i64,
                                  ttl: time::Duration)
                                  -> Result<bool, CellError> {
-        match self.r.get(key)? {
+        let key = self.r.open_key(key, redis::KeyMode::ReadWrite);
+        match key.read()? {
             Some(s) => {
                 if s.parse::<i64>()? == old {
                     // Still the old value: perform the swap.
-                    if ttl.num_seconds() > 1 {
-                        self.r.setex(key, ttl.num_seconds(), new.to_string().as_str())?;
-                    } else {
-                        self.r.set(key, new.to_string().as_str())?;
-                    }
-
+                    key.write(new.to_string().as_str())?;
+                    key.set_expire(ttl)?;
                     Ok(true)
                 } else {
                     // Not the old value: something else must have set it. Take no
@@ -158,7 +155,8 @@ impl<'a> Store for InternalRedisStore<'a> {
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
-        match self.r.get(key)? {
+        let key = self.r.open_key(key, redis::KeyMode::Read);
+        match key.read()? {
             Some(s) => {
                 let n = s.parse::<i64>()?;
                 Ok((n, time::now_utc()))
@@ -176,11 +174,15 @@ impl<'a> Store for InternalRedisStore<'a> {
                                   value: i64,
                                   ttl: time::Duration)
                                   -> Result<bool, CellError> {
-        let val = self.r.setnx(key, value.to_string().as_str())?;
-        if ttl.num_seconds() > 1 {
-            self.r.expire(key, ttl.num_seconds())?;
-        }
-        Ok(val)
+        let key = self.r.open_key(key, redis::KeyMode::ReadWrite);
+        let res = if key.is_empty()? {
+            key.write(value.to_string().as_str())?;
+            Ok(true)
+        } else {
+            Ok(false)
+        };
+        key.set_expire(ttl)?;
+        res
     }
 }
 
