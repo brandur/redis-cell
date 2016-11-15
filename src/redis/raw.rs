@@ -8,15 +8,13 @@ use libc::{c_int, c_long, c_longlong, size_t};
 // There's a ~0 chance that any of these will ever change so it's pretty safe.
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum KeyMode {
     Read = (1 << 0),
     Write = (1 << 1),
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ReplyType {
     Unknown = -1,
     String = 0,
@@ -26,8 +24,7 @@ pub enum ReplyType {
     Nil = 4,
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Status {
     Ok = 0,
     Err = 1,
@@ -150,6 +147,13 @@ pub fn reply_with_string(ctx: *mut RedisModuleCtx,
     unsafe { RedisModule_ReplyWithString(ctx, str) }
 }
 
+// Sets the expiry on a key.
+//
+// Expire is in milliseconds.
+pub fn set_expire(key: *mut RedisModuleKey, expire: c_longlong) -> Status {
+    unsafe { RedisModule_SetExpire(key, expire) }
+}
+
 pub fn string_dma(key: *mut RedisModuleKey,
                   len: *mut size_t,
                   mode: KeyMode)
@@ -233,6 +237,11 @@ extern "C" {
     static RedisModule_ReplyWithString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                       str: *mut RedisModuleString)
                                                       -> Status;
+
+    static RedisModule_SetExpire: extern "C" fn(key: *mut RedisModuleKey,
+                                                expire: c_longlong)
+                                                -> Status;
+
 
     static RedisModule_StringDMA: extern "C" fn(key: *mut RedisModuleKey,
                                                 len: *mut size_t,

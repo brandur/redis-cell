@@ -9,6 +9,7 @@ use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 use std::iter;
 use std::ptr;
+use time;
 
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
@@ -163,7 +164,7 @@ impl Redis {
     }
 
     pub fn get(&self, key: &str) -> Result<Option<String>, CellError> {
-        RedisKey::open(self.ctx, key).read()
+        RedisKey::open(self.ctx, key, KeyMode::Read).read()
     }
 
     pub fn log(&self, level: LogLevel, message: &str) {
@@ -176,6 +177,10 @@ impl Redis {
         // TODO: change to actual debug. Notice for now so that we can see
         // things.
         self.log(LogLevel::Notice, message);
+    }
+
+    pub fn open_key(&self, key: &str, mode: KeyMode) -> RedisKey {
+        RedisKey::open(self.ctx, key, mode)
     }
 
     /// Tells Redis that we're about to reply with an (Redis) array.
@@ -203,8 +208,7 @@ impl Redis {
     }
 
     pub fn set(&self, key: &str, val: &str) -> Result<(), CellError> {
-        let res = self.call("SET", &[key, val])?;
-        parse_simple_string(res)
+        RedisKey::open(self.ctx, key, KeyMode::Write).write(val)
     }
 
     pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), CellError> {
@@ -218,6 +222,12 @@ impl Redis {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum KeyMode {
+    Read = (1 << 0),
+    Write = (1 << 1),
+}
+
 pub struct RedisKey {
     ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
@@ -225,9 +235,13 @@ pub struct RedisKey {
 }
 
 impl RedisKey {
-    fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
+    fn open(ctx: *mut raw::RedisModuleCtx, key: &str, mode: KeyMode) -> RedisKey {
+        let raw_mode = match mode {
+            KeyMode::Read => raw::KeyMode::Read,
+            KeyMode::Write => raw::KeyMode::Write,
+        };
         let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
-        let key_inner = raw::open_key(ctx, key_str, raw::KeyMode::Read);
+        let key_inner = raw::open_key(ctx, key_str, raw_mode);
         RedisKey {
             ctx: ctx,
             key_inner: key_inner,
@@ -252,6 +266,27 @@ impl RedisKey {
             Some(bs)
         };
         Ok(val)
+    }
+
+    fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
+        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+            raw::Status::Ok => Ok(()),
+
+            // Error may occur if the key wasn't open for writing or is an
+            // empty key.
+            raw::Status::Err => Err(error!("Error while setting key expire")),
+        }
+    }
+
+    fn write(&self, val: &str) -> Result<(), CellError> {
+        let val_str =
+            raw::create_string(self.ctx, format!("{}\0", val).as_ptr(), val.len());
+        let res = match raw::string_set(self.key_inner, val_str) {
+            raw::Status::Ok => Ok(()),
+            raw::Status::Err => Err(error!("Error while setting key")),
+        };
+        raw::free_string(self.ctx, val_str);
+        res
     }
 }
 
