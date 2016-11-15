@@ -132,7 +132,7 @@ impl<'a> Store for InternalRedisStore<'a> {
                                  new: i64,
                                  ttl: time::Duration)
                                  -> Result<bool, CellError> {
-        let key = self.r.open_key(key, redis::KeyMode::ReadWrite);
+        let key = self.r.open_key_writable(key);
         match key.read()? {
             Some(s) => {
                 if s.parse::<i64>()? == old {
@@ -155,7 +155,7 @@ impl<'a> Store for InternalRedisStore<'a> {
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
-        let key = self.r.open_key(key, redis::KeyMode::Read);
+        let key = self.r.open_key(key);
         match key.read()? {
             Some(s) => {
                 let n = s.parse::<i64>()?;
@@ -174,7 +174,7 @@ impl<'a> Store for InternalRedisStore<'a> {
                                   value: i64,
                                   ttl: time::Duration)
                                   -> Result<bool, CellError> {
-        let key = self.r.open_key(key, redis::KeyMode::ReadWrite);
+        let key = self.r.open_key_writable(key);
         let res = if key.is_empty()? {
             key.write(value.to_string().as_str())?;
             Ok(true)
