@@ -163,27 +163,7 @@ impl Redis {
     }
 
     pub fn get(&self, key: &str) -> Result<Option<String>, CellError> {
-        let key_str =
-            raw::create_string(self.ctx, format!("{}\0", key).as_ptr(), key.len());
-        let key = raw::open_key(self.ctx, key_str, raw::KeyMode::Read);
-        let null_key: *mut raw::RedisModuleKey = ptr::null_mut();
-
-        let s = if key == null_key {
-            None
-        } else {
-            let mut length: size_t = 0;
-
-            // TODO: memory leak
-            let bs =
-                from_byte_string(raw::string_dma(key, &mut length, raw::KeyMode::Read),
-                                 length)?;
-            Some(bs)
-        };
-
-        raw::close_key(key);
-        raw::free_string(self.ctx, key_str);
-
-        Ok(s)
+        RedisKey::open(self.ctx, key).read()
     }
 
     pub fn log(&self, level: LogLevel, message: &str) {
@@ -235,6 +215,51 @@ impl Redis {
     pub fn setnx(&self, key: &str, val: &str) -> Result<bool, CellError> {
         let res = self.call("SETNX", &[key, val])?;
         parse_bool(res)
+    }
+}
+
+pub struct RedisKey {
+    ctx: *mut raw::RedisModuleCtx,
+    key_inner: *mut raw::RedisModuleKey,
+    key_str: *mut raw::RedisModuleString,
+}
+
+impl RedisKey {
+    fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
+        let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
+        let key_inner = raw::open_key(ctx, key_str, raw::KeyMode::Read);
+        RedisKey {
+            ctx: ctx,
+            key_inner: key_inner,
+            key_str: key_str,
+        }
+    }
+
+    fn is_null(&self) -> bool {
+        let null_key: *mut raw::RedisModuleKey = ptr::null_mut();
+        self.key_inner == null_key
+    }
+
+    fn read(&self) -> Result<Option<String>, CellError> {
+        let val = if self.is_null() {
+            None
+        } else {
+            let mut length: size_t = 0;
+            let bs = from_byte_string(raw::string_dma(self.key_inner,
+                                                      &mut length,
+                                                      raw::KeyMode::Read),
+                                      length)?;
+            Some(bs)
+        };
+        Ok(val)
+    }
+}
+
+impl Drop for RedisKey {
+    // Frees resources appropriately as a RedisKey goes out of scope.
+    fn drop(&mut self) {
+        raw::close_key(self.key_inner);
+        raw::free_string(self.ctx, self.key_str);
     }
 }
 
