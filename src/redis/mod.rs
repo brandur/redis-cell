@@ -8,6 +8,7 @@ use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 use std::iter;
+use std::ptr;
 
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
@@ -161,8 +162,25 @@ impl Redis {
         parse_bool(res)
     }
 
-    pub fn get(&self, key: &str) -> Result<Reply, CellError> {
-        self.call("GET", &[key])
+    pub fn get(&self, key: &str) -> Result<Option<String>, CellError> {
+        let key_str =
+            raw::create_string(self.ctx, format!("{}\0", key).as_ptr(), key.len());
+        let key = raw::open_key(self.ctx, key_str, raw::KeyMode::Read);
+
+        let mut length: size_t = 0;
+        let bytes = raw::string_dma(key, &mut length, raw::KeyMode::Read);
+        let null: *const u8 = ptr::null();
+        let s = if bytes == null {
+            None
+        } else {
+            let bs = from_byte_string(bytes, length)?;
+            Some(bs)
+        };
+
+        raw::close_key(key);
+        raw::free_string(self.ctx, key_str);
+
+        Ok(s)
     }
 
     pub fn log(&self, level: LogLevel, message: &str) {

@@ -132,37 +132,38 @@ impl<'a> Store for InternalRedisStore<'a> {
                                  new: i64,
                                  ttl: time::Duration)
                                  -> Result<bool, CellError> {
-        let val = self.r.coerce_integer(self.r.get(key))?;
-        match val {
-            redis::Reply::Nil => Ok(false),
+        match self.r.get(key)? {
+            Some(s) => {
+                if s.parse::<i64>()? == old {
+                    // Still the old value: perform the swap.
+                    if ttl.num_seconds() > 1 {
+                        self.r.setex(key, ttl.num_seconds(), new.to_string().as_str())?;
+                    } else {
+                        self.r.set(key, new.to_string().as_str())?;
+                    }
 
-            // Still the old value: perform the swap.
-            redis::Reply::Integer(n) if n == old => {
-                if ttl.num_seconds() > 1 {
-                    self.r.setex(key, ttl.num_seconds(), new.to_string().as_str())?;
+                    Ok(true)
                 } else {
-                    self.r.set(key, new.to_string().as_str())?;
+                    // Not the old value: something else must have set it. Take no
+                    // action.
+                    Ok(false)
                 }
-
-                Ok(true)
             }
 
-            // Not the old value: something else must have set it. Take no
-            // action.
-            redis::Reply::Integer(_) => Ok(false),
-
-            _ => Err(error!("GET returned non-string non-nil value.")),
+            // Value wasn't set.
+            None => Ok(false),
         }
     }
 
     fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
-        let val = self.r.coerce_integer(self.r.get(key))?;
-        match val {
-            redis::Reply::Nil => Ok((-1, time::now_utc())),
-            redis::Reply::Integer(n) => Ok((n, time::now_utc())),
-            x => Err(error!("Found non-integer in key: {} (type: {:?})", key, x)),
+        match self.r.get(key)? {
+            Some(s) => {
+                let n = s.parse::<i64>()?;
+                Ok((n, time::now_utc()))
+            }
+            None => Ok((-1, time::now_utc())),
         }
     }
 

@@ -1,16 +1,23 @@
+use std;
 use std::error;
 use std::fmt;
-use std::string;
 
 #[derive(Debug)]
 pub enum CellError {
     Generic(GenericError),
-    String(string::FromUtf8Error),
+    String(std::string::FromUtf8Error),
+    ParseIntError(std::num::ParseIntError),
 }
 
 impl CellError {
     pub fn generic(message: &str) -> CellError {
         CellError::Generic(GenericError::new(message))
+    }
+}
+
+impl From<std::num::ParseIntError> for CellError {
+    fn from(err: std::num::ParseIntError) -> CellError {
+        CellError::ParseIntError(err)
     }
 }
 
@@ -21,6 +28,7 @@ impl fmt::Display for CellError {
             // their implementations.
             CellError::Generic(ref err) => write!(f, "{}", err),
             CellError::String(ref err) => write!(f, "{}", err),
+            CellError::ParseIntError(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -32,6 +40,7 @@ impl error::Error for CellError {
         match *self {
             CellError::Generic(ref err) => err.description(),
             CellError::String(ref err) => err.description(),
+            CellError::ParseIntError(ref err) => err.description(),
         }
     }
 
@@ -43,6 +52,7 @@ impl error::Error for CellError {
             // implement `Error`.
             CellError::Generic(ref err) => Some(err),
             CellError::String(ref err) => Some(err),
+            CellError::ParseIntError(ref err) => Some(err),
         }
     }
 }

@@ -150,6 +150,13 @@ pub fn reply_with_string(ctx: *mut RedisModuleCtx,
     unsafe { RedisModule_ReplyWithString(ctx, str) }
 }
 
+pub fn string_dma(key: *mut RedisModuleKey,
+                  len: *mut size_t,
+                  mode: KeyMode)
+                  -> *const u8 {
+    unsafe { RedisModule_StringDMA(key, len, mode) }
+}
+
 pub fn string_ptr_len(str: *mut RedisModuleString, len: *mut size_t) -> *const u8 {
     unsafe { RedisModule_StringPtrLen(str, len) }
 }
@@ -226,6 +233,11 @@ extern "C" {
     static RedisModule_ReplyWithString: extern "C" fn(ctx: *mut RedisModuleCtx,
                                                       str: *mut RedisModuleString)
                                                       -> Status;
+
+    static RedisModule_StringDMA: extern "C" fn(key: *mut RedisModuleKey,
+                                                len: *mut size_t,
+                                                mode: KeyMode)
+                                                -> *const u8;
 
     static RedisModule_StringPtrLen: extern "C" fn(str: *mut RedisModuleString,
                                                    len: *mut size_t)
