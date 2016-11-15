@@ -8,6 +8,8 @@ use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 use std::iter;
+use std::ptr;
+use time;
 
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
@@ -156,15 +158,6 @@ impl Redis {
         }
     }
 
-    pub fn expire(&self, key: &str, ttl: i64) -> Result<bool, CellError> {
-        let res = self.call("EXPIRE", &[key, ttl.to_string().as_str()])?;
-        parse_bool(res)
-    }
-
-    pub fn get(&self, key: &str) -> Result<Reply, CellError> {
-        self.call("GET", &[key])
-    }
-
     pub fn log(&self, level: LogLevel, message: &str) {
         raw::log(self.ctx,
                  format!("{:?}\0", level).to_lowercase().as_ptr(),
@@ -175,6 +168,16 @@ impl Redis {
         // TODO: change to actual debug. Notice for now so that we can see
         // things.
         self.log(LogLevel::Notice, message);
+    }
+
+    /// Opens a Redis key for read access.
+    pub fn open_key(&self, key: &str) -> RedisKey {
+        RedisKey::open(self.ctx, key)
+    }
+
+    /// Opens a Redis key for read and write access.
+    pub fn open_key_writable(&self, key: &str) -> RedisKeyWritable {
+        RedisKeyWritable::open(self.ctx, key)
     }
 
     /// Tells Redis that we're about to reply with an (Redis) array.
@@ -200,22 +203,129 @@ impl Redis {
         raw::free_string(self.ctx, redis_str);
         res
     }
+}
 
-    pub fn set(&self, key: &str, val: &str) -> Result<(), CellError> {
-        let res = self.call("SET", &[key, val])?;
-        parse_simple_string(res)
+#[derive(Debug, PartialEq)]
+pub enum KeyMode {
+    Read,
+    ReadWrite,
+    Write,
+}
+
+pub struct RedisKey {
+    ctx: *mut raw::RedisModuleCtx,
+    key_inner: *mut raw::RedisModuleKey,
+    key_str: *mut raw::RedisModuleString,
+}
+
+/// RedisKey is an abstraction over a Redis key that allows readonly
+/// operations.
+impl RedisKey {
+    fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
+        let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
+        let key_inner = raw::open_key(ctx, key_str, to_raw_mode(KeyMode::Read));
+        RedisKey {
+            ctx: ctx,
+            key_inner: key_inner,
+            key_str: key_str,
+        }
     }
 
-    pub fn setex(&self, key: &str, ttl: i64, val: &str) -> Result<(), CellError> {
-        let res = self.call("SETEX", &[key, ttl.to_string().as_str(), val])?;
-        parse_simple_string(res)
+    /// Detects whether the key pointer given to us by Redis is null.
+    pub fn is_null(&self) -> bool {
+        let null_key: *mut raw::RedisModuleKey = ptr::null_mut();
+        self.key_inner == null_key
     }
 
-    pub fn setnx(&self, key: &str, val: &str) -> Result<bool, CellError> {
-        let res = self.call("SETNX", &[key, val])?;
-        parse_bool(res)
+    pub fn read(&self) -> Result<Option<String>, CellError> {
+        let val = if self.is_null() {
+            None
+        } else {
+            Some(read_key(self.key_inner)?)
+        };
+        Ok(val)
     }
 }
+
+impl Drop for RedisKey {
+    // Frees resources appropriately as a RedisKey goes out of scope.
+    fn drop(&mut self) {
+        raw::close_key(self.key_inner);
+        raw::free_string(self.ctx, self.key_str);
+    }
+}
+
+/// RedisKey is an abstraction over a Redis key that allows read and write
+/// operations.
+pub struct RedisKeyWritable {
+    ctx: *mut raw::RedisModuleCtx,
+    key_inner: *mut raw::RedisModuleKey,
+    key_str: *mut raw::RedisModuleString,
+}
+
+impl RedisKeyWritable {
+    fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKeyWritable {
+        let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
+        let key_inner = raw::open_key(ctx, key_str, to_raw_mode(KeyMode::ReadWrite));
+        RedisKeyWritable {
+            ctx: ctx,
+            key_inner: key_inner,
+            key_str: key_str,
+        }
+    }
+
+    /// Detects whether the value stored in a Redis key is empty.
+    ///
+    /// Note that an empty key can be reliably detected by looking for a null
+    /// as you open the key in read mode, but when asking for write Redis
+    /// returns a non-null pointer to allow us to write to even an empty key,
+    /// so we have to check the key's value instead.
+    pub fn is_empty(&self) -> Result<bool, CellError> {
+        match self.read()? {
+            Some(s) => {
+                match s.as_str() {
+                    "" => Ok(true),
+                    _ => Ok(false),
+                }
+            }
+            _ => Ok(false),
+        }
+    }
+
+    pub fn read(&self) -> Result<Option<String>, CellError> {
+        Ok(Some(read_key(self.key_inner)?))
+    }
+
+    pub fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
+        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+            raw::Status::Ok => Ok(()),
+
+            // Error may occur if the key wasn't open for writing or is an
+            // empty key.
+            raw::Status::Err => Err(error!("Error while setting key expire")),
+        }
+    }
+
+    pub fn write(&self, val: &str) -> Result<(), CellError> {
+        let val_str =
+            raw::create_string(self.ctx, format!("{}\0", val).as_ptr(), val.len());
+        let res = match raw::string_set(self.key_inner, val_str) {
+            raw::Status::Ok => Ok(()),
+            raw::Status::Err => Err(error!("Error while setting key")),
+        };
+        raw::free_string(self.ctx, val_str);
+        res
+    }
+}
+
+impl Drop for RedisKeyWritable {
+    // Frees resources appropriately as a RedisKey goes out of scope.
+    fn drop(&mut self) {
+        raw::close_key(self.key_inner);
+        raw::free_string(self.ctx, self.key_str);
+    }
+}
+
 
 /// Reply represents the various types of a replies that we can receive after
 /// executing a Redis command.
@@ -274,6 +384,7 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
     Ok(args)
 }
 
+// TODO: Change error to basic "FromUTF8" and pipe that back through.
 fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, CellError> {
     let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
     for j in 0..length {
@@ -287,19 +398,15 @@ fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, CellE
     }
 }
 
-fn parse_bool(reply: Reply) -> Result<bool, CellError> {
-    match reply {
-        Reply::Integer(n) if n == 0 => Ok(false),
-        Reply::Integer(n) if n == 1 => Ok(true),
-        r => Err(error!("Command returned non-boolean value (type was {:?}).", r)),
-    }
+fn read_key(key: *mut raw::RedisModuleKey) -> Result<String, CellError> {
+    let mut length: size_t = 0;
+    from_byte_string(raw::string_dma(key, &mut length, raw::KEYMODE_READ), length)
 }
 
-fn parse_simple_string(reply: Reply) -> Result<(), CellError> {
-    match reply {
-        // may also return a Redis null, but not with the parameters that
-        // we currently allow
-        Reply::String(ref s) if s.as_str() == "OK" => Ok(()),
-        r => Err(error!("Command returned non-string value (type was {:?}).", r)),
+fn to_raw_mode(mode: KeyMode) -> raw::KeyMode {
+    match mode {
+        KeyMode::Read => raw::KEYMODE_READ,
+        KeyMode::ReadWrite => raw::KEYMODE_READ | raw::KEYMODE_WRITE,
+        KeyMode::Write => raw::KEYMODE_WRITE,
     }
 }

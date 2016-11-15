@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate bitflags;
 extern crate libc;
 extern crate time;
 
