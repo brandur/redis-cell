@@ -178,8 +178,10 @@ impl Redis {
     }
 
     pub fn log_debug(&self, message: &str) {
-        // TODO: change to actual debug. Notice for now so that we can see
-        // things.
+        // Note that we log our debug messages as notice level in Redis. This
+        // is so that they'll show up with default configuration. Our debug
+        // logging will get compiled out in a release build so this won't
+        // result in undue noise in production.
         self.log(LogLevel::Notice, message);
     }
 
