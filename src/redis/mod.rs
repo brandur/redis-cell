@@ -11,6 +11,27 @@ use std::iter;
 use std::ptr;
 use time;
 
+/// LogLevel is a level of logging to be specified with a Redis log directive.
+#[derive(Debug)]
+pub enum LogLevel {
+    Debug,
+    Notice,
+    Verbose,
+    Warning,
+}
+
+/// Reply represents the various types of a replies that we can receive after
+/// executing a Redis command.
+#[derive(Debug)]
+pub enum Reply {
+    Array,
+    Error,
+    Integer(i64),
+    Nil,
+    String(String),
+    Unknown,
+}
+
 /// Command is a basic trait for a new command to be registered with a Redis
 /// module.
 pub trait Command {
@@ -49,15 +70,6 @@ impl Command {
     }
 }
 
-/// LogLevel is a level of logging to be specified with a Redis log directive.
-#[derive(Debug)]
-pub enum LogLevel {
-    Debug,
-    Notice,
-    Verbose,
-    Warning,
-}
-
 /// Redis is a structure that's designed to give us a high-level interface to
 /// the Redis module API by abstracting away the raw C FFI calls.
 pub struct Redis {
@@ -77,8 +89,8 @@ impl Redis {
         // on the other end anyway so the practical benefit will be minimal.
         let format: String = iter::repeat("s").take(args.len()).collect();
 
-        let terminated_args: Vec<*mut raw::RedisModuleString> = args.iter()
-            .map(|a| raw::create_string(self.ctx, format!("{}\0", a).as_ptr(), a.len()))
+        let terminated_args: Vec<RedisString> = args.iter()
+            .map(|s| self.create_string(s))
             .collect();
 
         // One would hope that there's a better way to handle a va_list than
@@ -97,29 +109,25 @@ impl Redis {
                 raw::call1::call(self.ctx,
                                  format!("{}\0", command).as_ptr(),
                                  format!("{}\0", format).as_ptr(),
-                                 terminated_args[0])
+                                 terminated_args[0].str_inner)
             }
             2 => {
                 raw::call2::call(self.ctx,
                                  format!("{}\0", command).as_ptr(),
                                  format!("{}\0", format).as_ptr(),
-                                 terminated_args[0],
-                                 terminated_args[1])
+                                 terminated_args[0].str_inner,
+                                 terminated_args[1].str_inner)
             }
             3 => {
                 raw::call3::call(self.ctx,
                                  format!("{}\0", command).as_ptr(),
                                  format!("{}\0", format).as_ptr(),
-                                 terminated_args[0],
-                                 terminated_args[1],
-                                 terminated_args[2])
+                                 terminated_args[0].str_inner,
+                                 terminated_args[1].str_inner,
+                                 terminated_args[2].str_inner)
             }
             _ => return Err(error!("Can't support that many CALL arguments")),
         };
-
-        for redis_str in &terminated_args {
-            raw::free_string(self.ctx, *redis_str);
-        }
 
         let reply_res = manifest_redis_reply(raw_reply);
         raw::free_call_reply(raw_reply);
@@ -156,6 +164,10 @@ impl Redis {
             }
             _ => reply_res,
         }
+    }
+
+    pub fn create_string(&self, s: &str) -> RedisString {
+        RedisString::create(self.ctx, s)
     }
 
     pub fn log(&self, level: LogLevel, message: &str) {
@@ -195,12 +207,9 @@ impl Redis {
     }
 
     pub fn reply_string(&self, message: &str) -> Result<(), CellError> {
-        let redis_str = raw::create_string(self.ctx,
-                                           format!("{}\0", message).as_ptr(),
-                                           message.len());
-        let res = handle_status(raw::reply_with_string(self.ctx, redis_str),
+        let redis_str = self.create_string(message);
+        let res = handle_status(raw::reply_with_string(self.ctx, redis_str.str_inner),
                                 "Could not reply with string");
-        raw::free_string(self.ctx, redis_str);
         res
     }
 }
@@ -212,18 +221,25 @@ pub enum KeyMode {
     Write,
 }
 
+/// RedisKey is an abstraction over a Redis key that allows readonly
+/// operations.
+///
+/// Its primary function is to ensure the proper deallocation of resources when
+/// it goes out of scope. Redis normally requires that keys be managed manually
+/// by explicitly freeing them when you're done. This can be a risky prospect,
+/// especially with mechanics like Rust's `?` operator, so we ensure fault-free
+/// operation through the use of the Drop trait.
+#[derive(Debug)]
 pub struct RedisKey {
     ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
-    key_str: *mut raw::RedisModuleString,
+    key_str: RedisString,
 }
 
-/// RedisKey is an abstraction over a Redis key that allows readonly
-/// operations.
 impl RedisKey {
     fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
-        let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
-        let key_inner = raw::open_key(ctx, key_str, to_raw_mode(KeyMode::Read));
+        let key_str = RedisString::create(ctx, key);
+        let key_inner = raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::Read));
         RedisKey {
             ctx: ctx,
             key_inner: key_inner,
@@ -251,7 +267,6 @@ impl Drop for RedisKey {
     // Frees resources appropriately as a RedisKey goes out of scope.
     fn drop(&mut self) {
         raw::close_key(self.key_inner);
-        raw::free_string(self.ctx, self.key_str);
     }
 }
 
@@ -260,13 +275,14 @@ impl Drop for RedisKey {
 pub struct RedisKeyWritable {
     ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
-    key_str: *mut raw::RedisModuleString,
+    key_str: RedisString,
 }
 
 impl RedisKeyWritable {
     fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKeyWritable {
-        let key_str = raw::create_string(ctx, format!("{}\0", key).as_ptr(), key.len());
-        let key_inner = raw::open_key(ctx, key_str, to_raw_mode(KeyMode::ReadWrite));
+        let key_str = RedisString::create(ctx, key);
+        let key_inner =
+            raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::ReadWrite));
         RedisKeyWritable {
             ctx: ctx,
             key_inner: key_inner,
@@ -307,13 +323,11 @@ impl RedisKeyWritable {
     }
 
     pub fn write(&self, val: &str) -> Result<(), CellError> {
-        let val_str =
-            raw::create_string(self.ctx, format!("{}\0", val).as_ptr(), val.len());
-        let res = match raw::string_set(self.key_inner, val_str) {
+        let val_str = RedisString::create(self.ctx, val);
+        let res = match raw::string_set(self.key_inner, val_str.str_inner) {
             raw::Status::Ok => Ok(()),
             raw::Status::Err => Err(error!("Error while setting key")),
         };
-        raw::free_string(self.ctx, val_str);
         res
     }
 }
@@ -322,21 +336,37 @@ impl Drop for RedisKeyWritable {
     // Frees resources appropriately as a RedisKey goes out of scope.
     fn drop(&mut self) {
         raw::close_key(self.key_inner);
-        raw::free_string(self.ctx, self.key_str);
     }
 }
 
-
-/// Reply represents the various types of a replies that we can receive after
-/// executing a Redis command.
+/// RedisString is an abstraction over a Redis string.
+///
+/// Its primary function is to ensure the proper deallocation of resources when
+/// it goes out of scope. Redis normally requires that strings be managed
+/// manually by explicitly freeing them when you're done. This can be a risky
+/// prospect, especially with mechanics like Rust's `?` operator, so we ensure
+/// fault-free operation through the use of the Drop trait.
 #[derive(Debug)]
-pub enum Reply {
-    Array,
-    Error,
-    Integer(i64),
-    Nil,
-    String(String),
-    Unknown,
+pub struct RedisString {
+    ctx: *mut raw::RedisModuleCtx,
+    str_inner: *mut raw::RedisModuleString,
+}
+
+impl RedisString {
+    fn create(ctx: *mut raw::RedisModuleCtx, s: &str) -> RedisString {
+        let str_inner = raw::create_string(ctx, format!("{}\0", s).as_ptr(), s.len());
+        RedisString {
+            ctx: ctx,
+            str_inner: str_inner,
+        }
+    }
+}
+
+impl Drop for RedisString {
+    // Frees resources appropriately as a RedisKey goes out of scope.
+    fn drop(&mut self) {
+        raw::free_string(self.ctx, self.str_inner);
+    }
 }
 
 fn handle_status(status: raw::Status, message: &str) -> Result<(), CellError> {
