@@ -9,6 +9,7 @@ use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
 use std::iter;
 use std::ptr;
+use std::string;
 use time;
 
 /// LogLevel is a level of logging to be specified with a Redis log directive.
@@ -384,7 +385,9 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
         raw::ReplyType::String => {
             let mut length: size_t = 0;
             let bytes = raw::call_reply_string_ptr(reply, &mut length);
-            from_byte_string(bytes, length).map(|s| Reply::String(s))
+            from_byte_string(bytes, length)
+                .map(|s| Reply::String(s))
+                .map_err(|e| CellError::from(e))
         }
         raw::ReplyType::Unknown => Ok(Reply::Unknown),
 
@@ -397,7 +400,7 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
 }
 
 fn manifest_redis_string(redis_str: *mut raw::RedisModuleString)
-                         -> Result<String, CellError> {
+                         -> Result<String, string::FromUtf8Error> {
     let mut length: size_t = 0;
     let bytes = raw::string_ptr_len(redis_str, &mut length);
     from_byte_string(bytes, length)
@@ -405,7 +408,7 @@ fn manifest_redis_string(redis_str: *mut raw::RedisModuleString)
 
 fn parse_args(argv: *mut *mut raw::RedisModuleString,
               argc: c_int)
-              -> Result<Vec<String>, CellError> {
+              -> Result<Vec<String>, string::FromUtf8Error> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str = unsafe { *argv.offset(i as isize) };
@@ -414,21 +417,19 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
     Ok(args)
 }
 
-// TODO: Change error to basic "FromUTF8" and pipe that back through.
-fn from_byte_string(byte_str: *const u8, length: size_t) -> Result<String, CellError> {
+fn from_byte_string(byte_str: *const u8,
+                    length: size_t)
+                    -> Result<String, string::FromUtf8Error> {
     let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
     for j in 0..length {
         let byte: u8 = unsafe { *byte_str.offset(j as isize) };
         vec_str.insert(j, byte);
     }
 
-    match String::from_utf8(vec_str) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(CellError::String(e)),
-    }
+    String::from_utf8(vec_str)
 }
 
-fn read_key(key: *mut raw::RedisModuleKey) -> Result<String, CellError> {
+fn read_key(key: *mut raw::RedisModuleKey) -> Result<String, string::FromUtf8Error> {
     let mut length: size_t = 0;
     from_byte_string(raw::string_dma(key, &mut length, raw::KEYMODE_READ), length)
 }

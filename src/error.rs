@@ -5,13 +5,19 @@ use std::fmt;
 #[derive(Debug)]
 pub enum CellError {
     Generic(GenericError),
-    String(std::string::FromUtf8Error),
+    FromUtf8Error(std::string::FromUtf8Error),
     ParseIntError(std::num::ParseIntError),
 }
 
 impl CellError {
     pub fn generic(message: &str) -> CellError {
         CellError::Generic(GenericError::new(message))
+    }
+}
+
+impl From<std::string::FromUtf8Error> for CellError {
+    fn from(err: std::string::FromUtf8Error) -> CellError {
+        CellError::FromUtf8Error(err)
     }
 }
 
@@ -27,7 +33,7 @@ impl fmt::Display for CellError {
             // Both underlying errors already impl `Display`, so we defer to
             // their implementations.
             CellError::Generic(ref err) => write!(f, "{}", err),
-            CellError::String(ref err) => write!(f, "{}", err),
+            CellError::FromUtf8Error(ref err) => write!(f, "{}", err),
             CellError::ParseIntError(ref err) => write!(f, "{}", err),
         }
     }
@@ -39,7 +45,7 @@ impl error::Error for CellError {
         // implementations.
         match *self {
             CellError::Generic(ref err) => err.description(),
-            CellError::String(ref err) => err.description(),
+            CellError::FromUtf8Error(ref err) => err.description(),
             CellError::ParseIntError(ref err) => err.description(),
         }
     }
@@ -51,7 +57,7 @@ impl error::Error for CellError {
             // to a trait object `&Error`. This works because both error types
             // implement `Error`.
             CellError::Generic(ref err) => Some(err),
-            CellError::String(ref err) => Some(err),
+            CellError::FromUtf8Error(ref err) => Some(err),
             CellError::ParseIntError(ref err) => Some(err),
         }
     }
