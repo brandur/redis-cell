@@ -20,6 +20,9 @@ per command as seen from a Redis client).
 
 ## Install
 
+**A note on stability:** While testing has yield promising results, it should
+be noted that redis-cell is not yet widely production vetted. Use it with care.
+
 [Binaries for redis-cell are available for Mac and Linux][releases]. Open
 an issue if there's interest in having binaries for architectures or operating
 systems that are not currently supported.
