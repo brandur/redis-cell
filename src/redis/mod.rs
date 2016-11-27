@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 // This should not be public in the long run. Build an abstraction interface
 // instead.
 pub mod raw;
@@ -221,7 +219,6 @@ impl Redis {
 pub enum KeyMode {
     Read,
     ReadWrite,
-    Write,
 }
 
 /// RedisKey is an abstraction over a Redis key that allows readonly
@@ -278,6 +275,12 @@ impl Drop for RedisKey {
 pub struct RedisKeyWritable {
     ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
+
+    // The Redis string
+    //
+    // This field is needed on the struct so that its Drop implementation gets
+    // called when it goes out of scope.
+    #[allow(dead_code)]
     key_str: RedisString,
 }
 
@@ -440,6 +443,5 @@ fn to_raw_mode(mode: KeyMode) -> raw::KeyMode {
     match mode {
         KeyMode::Read => raw::KEYMODE_READ,
         KeyMode::ReadWrite => raw::KEYMODE_READ | raw::KEYMODE_WRITE,
-        KeyMode::Write => raw::KEYMODE_WRITE,
     }
 }

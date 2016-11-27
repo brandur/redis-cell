@@ -1,3 +1,5 @@
+// Allow dead code in here in case I want to publish it as a crate at some
+// point.
 #![allow(dead_code)]
 
 extern crate libc;

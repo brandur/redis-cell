@@ -1,7 +1,3 @@
-// Remove as soon as it's not annoying as fuck to have this (i.e. we've
-// implemented more of the library).
-#![allow(dead_code)]
-
 extern crate time;
 
 pub mod store;
