@@ -20,7 +20,7 @@ per command as seen from a Redis client).
 
 ## Install
 
-**A note on stability:** While testing has yield promising results, it should
+**A note on stability:** While testing has yielded promising results, it should
 be noted that redis-cell is not yet widely production vetted. Use it with care.
 
 [Binaries for redis-cell are available for Mac and Linux][releases]. Open
