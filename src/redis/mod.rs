@@ -149,7 +149,7 @@ impl Redis {
     /// its coercion.
     ///
     /// This method coerces a Redis string that looks like an integer into an
-    /// integer response. All other types of replies are pass through
+    /// integer response. All other types of replies are passed through
     /// unmodified.
     pub fn coerce_integer(&self,
                           reply_res: Result<Reply, CellError>)
