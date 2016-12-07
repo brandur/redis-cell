@@ -63,7 +63,7 @@ loadmodule /path/to/modules/libredis_cell.so
 
 ## Usage
 
-From Redis (try running `redis-cli`) use the new `throttle` command loaded by
+From Redis (try running `redis-cli`) use the new `CL.THROTTLE` command loaded by
 the module. It's used like this:
 
 ```

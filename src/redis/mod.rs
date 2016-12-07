@@ -369,7 +369,7 @@ impl RedisString {
 }
 
 impl Drop for RedisString {
-    // Frees resources appropriately as a RedisKey goes out of scope.
+    // Frees resources appropriately as a RedisString goes out of scope.
     fn drop(&mut self) {
         raw::free_string(self.ctx, self.str_inner);
     }
