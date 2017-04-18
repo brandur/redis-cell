@@ -13,4 +13,4 @@ libc = "0.2.0"
 time = "0.1"
 
 [build-dependencies]
-gcc = "*"
+gcc = "0.3"
