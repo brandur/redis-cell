@@ -176,7 +176,7 @@ pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Stat
 // we do is bake redismodule.h's symbols into a library of our construction
 // during build and link against that. See build.rs for details.
 #[allow(improper_ctypes)]
-#[link(name = "redismodule")]
+#[link(name="redismodule", kind="static")]
 extern "C" {
     pub fn Export_RedisModule_Init(ctx: *mut RedisModuleCtx,
                                    modulename: *const u8,
@@ -278,7 +278,6 @@ pub mod call1 {
     }
 
     #[allow(improper_ctypes)]
-    #[link(name = "redismodule")]
     extern "C" {
         pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
                                                    cmdname: *const u8,
@@ -301,7 +300,6 @@ pub mod call2 {
     }
 
     #[allow(improper_ctypes)]
-    #[link(name = "redismodule")]
     extern "C" {
         pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
                                                    cmdname: *const u8,
@@ -326,7 +324,6 @@ pub mod call3 {
     }
 
     #[allow(improper_ctypes)]
-    #[link(name = "redismodule")]
     extern "C" {
         pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
                                                    cmdname: *const u8,
