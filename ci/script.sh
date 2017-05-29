@@ -1,42 +1,24 @@
-# `script` phase: you usually build, test and generate docs in this phase
+# This script takes care of testing your crate
 
 set -ex
 
-. $(dirname $0)/utils.sh
+# TODO This is the "test phase", tweak it as you see fit
+main() {
+    cross build --target $TARGET
+    cross build --target $TARGET --release
 
-# PROTIP: Always pass `--target $TARGET` to cargo commands, this makes cargo
-# output build artifacts to target/$TARGET/{debug,release} which can reduce the
-# number of needed conditionals in the `before_deploy`/packaging phase.
-build_and_test() {
-    case $TARGET in
-        # configure emulation for transparent execution of foreign binaries
-        aarch64-unknown-linux-gnu)
-            export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-            ;;
-        arm*-unknown-linux-gnueabihf)
-            export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
-            ;;
-        *)
-            ;;
-    esac
-
-    if [ ! -z "$QEMU_LD_PREFIX" ]; then
-        # Run tests on a single thread when using QEMU user emulation
-        export RUST_TEST_THREADS=1
+    if [ ! -z $DISABLE_TESTS ]; then
+        return
     fi
 
-    cargo fmt -- --write-mode=diff
-    cargo build --target $TARGET --verbose
-    cargo test --target $TARGET
+    cross test --target $TARGET
+    cross test --target $TARGET --release
 
-    # Sanity check the file type.
-    #
-    # Naming will be .dylib on OSX and .so elsewhere.
-    file target/$TARGET/debug/libredis_cell.*
+    cross run --target $TARGET
+    cross run --target $TARGET --release
 }
 
-main() {
-    build_and_test
-}
-
-main
+# we don't run the "test phase" when doing deploys
+if [ -z $TRAVIS_TAG ]; then
+    main
+fi

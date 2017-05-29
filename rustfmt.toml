@@ -1,3 +1,4 @@
 ideal_width = 79
 max_width = 90
+#struct_lit_style = "Visual"
 write_mode = "Overwrite"
