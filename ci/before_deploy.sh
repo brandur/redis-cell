@@ -17,7 +17,9 @@ main() {
 
     test -f Cargo.lock || cargo generate-lockfile
 
-    cross rustc --target $TARGET --release -- -C lto
+    # The template uses `-- -C lto`, but this only applies to executables,
+    # cdylibs, and static libraries.
+    cross rustc --target $TARGET --release
 
     # Naming will be .dylib on Mac OS and .so elsewhere.
     cp target/$TARGET/release/libredis_cell.* $stage/
