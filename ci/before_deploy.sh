@@ -1,34 +1,32 @@
-# `before_deploy` phase: here we package the build artifacts
+# This script takes care of building your crate and packaging it for release
 
 set -ex
 
-. $(dirname $0)/utils.sh
-
-# Generate artifacts for release
-mk_artifacts() {
-    cargo build --target $TARGET --release
-}
-
-mk_tarball() {
-    # create a "staging" directory
-    local td=$(mktempd)
-    local out_dir=$(pwd)
-
-    # Naming will be .dylib on OSX and .so elsewhere.
-    cp target/$TARGET/release/libredis_cell.* $td
-
-    pushd $td
-
-    # release tarball will look like 'rust-everywhere-v1.2.3-x86_64-unknown-linux-gnu.tar.gz'
-    tar czf $out_dir/${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz *
-
-    popd
-    rm -r $td
-}
-
 main() {
-    mk_artifacts
-    mk_tarball
+    local src=$(pwd) \
+          stage=
+
+    case $TRAVIS_OS_NAME in
+        linux)
+            stage=$(mktemp -d)
+            ;;
+        osx)
+            stage=$(mktemp -d -t tmp)
+            ;;
+    esac
+
+    test -f Cargo.lock || cargo generate-lockfile
+
+    cross rustc --target $TARGET --release -- -C lto
+
+    # Naming will be .dylib on Mac OS and .so elsewhere.
+    cp target/$TARGET/release/libredis_cell.* $stage/
+
+    cd $stage
+    tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
+    cd $src
+
+    rm -rf $stage
 }
 
 main

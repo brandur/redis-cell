@@ -1,7 +1,13 @@
+dist: trusty
 language: rust
+services: docker
+sudo: required
 
 # Cache built crates for much faster builds.
 cache: cargo
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
 
 notifications:
   email:
@@ -9,7 +15,7 @@ notifications:
 
 env:
   global:
-    - PROJECT_NAME=redis-cell
+    - CRATE_NAME=redis-cell
 
 matrix:
   allow_failures:
@@ -17,34 +23,23 @@ matrix:
 
   include:
     # Stable.
-    - os: osx
-      rust: stable
-      env: TARGET=x86_64-apple-darwin
-    - os: linux
-      rust: stable
-      env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+    - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
 
-    # Beta.
-    - os: osx
-      rust: beta
-      env: TARGET=x86_64-apple-darwin
-    - os: linux
-      rust: beta
-      env: TARGET=x86_64-unknown-linux-gnu
-
-    # Nightly.
-    - os: osx
+    # Testing other channels
+    - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
-      env: TARGET=x86_64-apple-darwin
-    - os: linux
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
       rust: nightly
-      env: TARGET=x86_64-unknown-linux-gnu
 
-before_install:
-  - export PATH="$PATH:$HOME/.cargo/bin"
+before_install: set -e
 
 install:
   - bash ci/install.sh
+  - source ~/.cargo/env || true
 
 before_script: 
   # Don't fail on failure to install because it's probably because the target
@@ -53,6 +48,8 @@ before_script:
 
 script:
   - bash ci/script.sh
+
+after_script: set +e
 
 before_deploy:
   - bash ci/before_deploy.sh
@@ -73,7 +70,7 @@ deploy:
   api_key:
     secure: "sK0Hy8dF1wmz+A505coJNeR8BYooD9AranRdvJagbvJcsijc1Bs7id8f0VruezSRvs2CZXt/iC9Btu/6/R+pvc7vskZyqsdXBpO1oFMUMwwzPuasz2w5DOFH8Ftg2fOl8Hjm3vzwp/itkjeUl/3beX/MTHt1emIusnFP6HcpSIx3XUvjU5c+VoAuGIj5qEu2eKGyRQf+pFiHqeR5H75cVJoFps0E8eaQbCV1XolX/sVHenaxYIaTb87xMUCV6k2VHWhAR5036+OJ02W1q9mAgChD83Ac/+j2Oq52hg2yyjYsLit0of7BJ1Rg0025yZd8dap4g9cW59/MO6jnUzOiX1uHvWXgOaAiktzrgHcw0zwZS6DyYzRkJ2AVAaYXrs/LdVQOECMAc1Flur0aS/OwaojMRK6MDLqLJ1nMjacSQl2loAu1XFhVum0RZQ37jXrdJxZK9+xj712WkbSmGoQvh1oJB631H4nPNOJxBOdvV3EL3sJ/XGVpXEWlQk28V6QPpxSCmNNDVNj3s1LuonkB+L6ZxreKixP2tWMO76a63k4zBBVaCDdkmIDCaXActDM/V3+nQbJgQBApu/v0+d0dd91P0uapWYkUOJMRVoGUVQ1xRPdCh/yaVRd6DPN4HW7TCaEUyamlcFo9mZsTiC6pTPNMv3IjpEgJfzf/3qkjryQ="
   file_glob: true
-  file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*
+  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
   # Don't delete the artifacts from previous phases.
   skip_cleanup: true
   # Deploy when a new tag is pushed.
@@ -82,3 +79,5 @@ deploy:
     # release *once* per target.
     condition: $TRAVIS_RUST_VERSION = stable
     tags: true
+  provider: releases
+  skip_cleanup: true
