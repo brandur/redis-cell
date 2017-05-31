@@ -3,11 +3,6 @@ language: rust
 services: docker
 sudo: required
 
-rust:
-  - 1.17.0
-  - beta
-  - nightly
-
 # Cache built crates for much faster builds.
 cache: cargo
 before_cache:
