@@ -12,3 +12,9 @@ libc = "0.2.0"
 time = "0.1"
 redis-command-gen = { path = "./redis-command-gen"}
 redis-module-sys = { path = "./redis-module-sys"}
+
+[workspace]
+members = [
+    "redis-module-sys",
+    "redis-command-gen",
+]
