@@ -262,7 +262,7 @@ fn nanoseconds(x: time::Tm) -> i64 {
 mod tests {
     extern crate time;
 
-    use error::CellError;
+    use redis_module_sys::error::CellError;
     use std::error::Error;
     use cell::*;
 
