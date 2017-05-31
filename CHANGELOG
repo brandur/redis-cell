@@ -1,0 +1,13 @@
+0.2.1 2017-05-29
+	* Minor build fixes.
+
+0.2.0 2016-11-08
+	* The project has been renamed from "redis-throttle" to
+	  "redis-cell" to avoid naming contention with the
+	  multitude of projects that are already named for the
+	  former.
+
+0.1.0 2016-11-06
+	* Initial release.
+
+# vim: set tw=59:
