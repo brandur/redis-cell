@@ -2,6 +2,9 @@
 // instead.
 pub mod raw;
 
+#[macro_use]
+pub mod macros;
+
 use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::error::Error;
@@ -23,7 +26,7 @@ pub enum LogLevel {
 /// executing a Redis command.
 #[derive(Debug)]
 pub enum Reply {
-    Array,
+    Array(Vec<Reply>),
     Error,
     Integer(i64),
     Nil,
@@ -31,14 +34,11 @@ pub enum Reply {
     Unknown,
 }
 
-/// Command is a basic trait for a new command to be registered with a Redis
+/// RedisCommandAttrs is a basic trait for a new command to be registered with a Redis (1/2 of the picture)
 /// module.
-pub trait Command {
+pub trait RedisCommandAttrs {
     // Should return the name of the command to be registered.
     fn name(&self) -> &'static str;
-
-    // Run the command.
-    fn run(&self, r: Redis, args: &[&str]) -> Result<(), CellError>;
 
     // Should return any flags to be registered with the name as a string
     // separated list. See the Redis module API documentation for a complete
@@ -46,10 +46,35 @@ pub trait Command {
     fn str_flags(&self) -> &'static str;
 }
 
-impl Command {
+// The other 1/2.
+pub trait RedisCommand : RedisCommandAttrs {
+    // Run the command.
+    fn run(&self, r: Redis, args: &[&str]) -> Result<(), CellError>;
+
+    fn reply_with_vec(&self, r: &Redis, replies: Vec<String>) -> Result<(), CellError> {
+        try!(r.reply_array(replies.len() as i64));
+        for res in replies.iter() {
+            try!(r.reply_string(&res));
+        }
+        Ok(())
+    }
+    ///
+    /// reply() - Default reply to caller, for once a command in redis has completed
+    ///
+    fn reply(&self, r: &Redis, reply: &Reply) -> Result<(), CellError> {
+        println!("reply: {:?}", reply);
+        match reply {
+            &Reply::String(ref value) => r.reply_string(value),
+            &Reply::Integer(value) => r.reply_integer(value),
+            _ => Err(redis_error!(&format!("Received unexpected reply type {:?}", reply )))
+        }
+    }
+}
+
+impl RedisCommand {
     /// Provides a basic wrapper for a command's implementation that parses
     /// arguments to Rust data types and handles the OK/ERR reply back to Redis.
-    pub fn harness(command: &Command,
+    pub fn harness(command: &RedisCommand,
                    ctx: *mut raw::RedisModuleCtx,
                    argv: *mut *mut raw::RedisModuleString,
                    argc: c_int)
@@ -77,7 +102,7 @@ pub struct Redis {
 
 impl Redis {
     pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, CellError> {
-        log_debug!(self, "{} [began] args = {:?}", command, args);
+        redis_log_debug!(self, "{} [began] args = {:?}", command, args);
 
         // We use a "format" string to tell redis what types we're passing in.
         // Currently we just pass everything as a string so this is just the
@@ -94,6 +119,7 @@ impl Redis {
 
         // One would hope that there's a better way to handle a va_list than
         // this, but I can't find it for the life of me.
+        // TODO: fix this crap
         let raw_reply = match args.len() {
             1 => {
                 // WARNING: This is downright hazardous, but I've noticed that
@@ -125,15 +151,27 @@ impl Redis {
                                  terminated_args[1].str_inner,
                                  terminated_args[2].str_inner)
             }
-            _ => return Err(error!("Can't support that many CALL arguments")),
+            4 => {
+                raw::call4::call(self.ctx,
+                                 format!("{}\0", command).as_ptr(),
+                                 format!("{}\0", format).as_ptr(),
+                                 terminated_args[0].str_inner,
+                                 terminated_args[1].str_inner,
+                                 terminated_args[2].str_inner,
+                                 terminated_args[3].str_inner)
+            }
+            _ => return Err(redis_error!("Can't support that many CALL arguments")),
         };
 
         let reply_res = manifest_redis_reply(raw_reply);
-        raw::free_call_reply(raw_reply);
+
+        if raw_reply != ptr::null_mut() {
+            raw::free_call_reply(raw_reply);
+        }
 
         match reply_res {
             Ok(ref reply) => {
-                log_debug!(self, "{} [ended] result = {:?}", command, reply);
+                redis_log_debug!(self, "{} [ended] result = {:?}", command, reply);
             }
             Err(_) => (),
         }
@@ -324,7 +362,7 @@ impl RedisKeyWritable {
 
             // Error may occur if the key wasn't open for writing or is an
             // empty key.
-            raw::Status::Err => Err(error!("Error while setting key expire")),
+            raw::Status::Err => Err(redis_error!("Error while setting key expire")),
         }
     }
 
@@ -332,7 +370,7 @@ impl RedisKeyWritable {
         let val_str = RedisString::create(self.ctx, val);
         let res = match raw::string_set(self.key_inner, val_str.str_inner) {
             raw::Status::Ok => Ok(()),
-            raw::Status::Err => Err(error!("Error while setting key")),
+            raw::Status::Err => Err(redis_error!("Error while setting key")),
         };
         res
     }
@@ -378,15 +416,42 @@ impl Drop for RedisString {
 fn handle_status(status: raw::Status, message: &str) -> Result<(), CellError> {
     match status {
         raw::Status::Ok => Ok(()),
-        raw::Status::Err => Err(error!(message)),
+        raw::Status::Err => Err(redis_error!(message)),
     }
 }
 
 fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
                         -> Result<Reply, CellError> {
+    if reply == ptr::null_mut() {
+        return Err(redis_error!("Call reply was null."));
+    }
     match raw::call_reply_type(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::call_reply_integer(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
+
+        // From the redis module docs:
+        // Reply objects must be freed using RedisModule_FreeCallReply.
+        // For arrays, you need to free only the top level reply, not the nested replies.
+        raw::ReplyType::Array => {
+            let len = raw::call_reply_length(reply);
+            let mut replies = Vec::with_capacity(len as usize);
+            for i in 0..len {
+                let subreply = raw::call_reply_array_element(reply, i);
+
+                // recurse, use this same function to convert children to replies
+                let subreply = try!(manifest_redis_reply(subreply));
+                replies.push(subreply);
+            }
+            Ok(Reply::Array(replies))
+        },
+
+        // From the redis module docs:
+        // Strings and errors (which are like strings but with a different type) can be
+        // accessed using in the following way, making sure to never write to the resulting
+        // pointer (that is returned as as const pointer so that misusing must be pretty explicit):
+        //
+        // size_t len;
+        // char *ptr = RedisModule_CallReplyStringPtr(reply,&len);
         raw::ReplyType::String => {
             let mut length: size_t = 0;
             let bytes = raw::call_reply_string_ptr(reply, &mut length);
@@ -394,13 +459,19 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
                 .map(|s| Reply::String(s))
                 .map_err(|e| CellError::from(e))
         }
+        raw::ReplyType::Error => {
+
+            let mut length: size_t = 0;
+            let bytes = raw::call_reply_string_ptr(reply, &mut length);
+
+            let err_msg = from_byte_string(bytes, length)
+                .map(|s| Reply::String(s))
+                .map_err(|e| CellError::from(e));
+
+            Err(redis_error!("Redis replied with an error {:?}.", err_msg))
+        },
+
         raw::ReplyType::Unknown => Ok(Reply::Unknown),
-
-        // TODO: I need to actually extract the error from Redis here. Also, it
-        // should probably be its own non-generic variety of CellError.
-        raw::ReplyType::Error => Err(error!("Redis replied with an error.")),
-
-        other => Err(error!("Don't yet handle Redis type: {:?}", other)),
     }
 }
 

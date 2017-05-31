@@ -1,8 +1,7 @@
 [package]
 name = "redis-cell"
-version = "0.1.0"
-authors = ["Brandur <brandur@mutelight.org>"]
-build = "build.rs"
+version = "0.2.0"
+authors = ["Brandur <brandur@mutelight.org>", "dwerner <dan.werner@gmail.com>"]
 
 [lib]
 crate-type = ["dylib"]
@@ -11,6 +10,5 @@ crate-type = ["dylib"]
 bitflags = "0.7.0"
 libc = "0.2.0"
 time = "0.1"
-
-[build-dependencies]
-gcc = "0.3"
+redis-command-gen = { path = "./redis-command-gen"}
+redis-module-sys = { path = "./redis-module-sys"}

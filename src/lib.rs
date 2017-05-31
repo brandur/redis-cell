@@ -1,38 +1,43 @@
 #[macro_use]
 extern crate bitflags;
+
+#[macro_use]
+extern crate redis_module_sys;
+
+#[macro_use]
+extern crate redis_command_gen;
+
 extern crate libc;
 extern crate time;
 
-#[macro_use]
-mod macros;
-
 pub mod cell;
-pub mod error;
-mod redis;
 
-use cell::store;
-use error::CellError;
 use libc::c_int;
-use redis::Command;
-use redis::raw;
+
+use redis_module_sys::redis;
+use redis_module_sys::redis::{
+    RedisCommand,
+    RedisCommandAttrs,
+    Reply,
+    raw,
+};
+
+use cell::store::InternalRedisStore;
+use redis_module_sys::error::CellError;
+use redis_module_sys::redis::raw::RedisModuleCtx;
 
 const MODULE_NAME: &'static str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
-struct ThrottleCommand {
-}
-
-impl Command for ThrottleCommand {
-    // Should return the name of the command to be registered.
-    fn name(&self) -> &'static str {
-        "cl.throttle"
-    }
-
+#[derive(RedisCommandAttrs)]
+#[command(name = "cl.throttle", flags = "write", static_handle="CL_THROTTLE_COMMAND")]
+struct ThrottleCommand;
+impl RedisCommand for ThrottleCommand {
     // Run the command.
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), CellError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: {} <key> <max_burst> <count per period> \
+            return Err(redis_error!("Usage: {} <key> <max_burst> <count per period> \
                                <period> [<quantity>]",
                               self.name()));
         }
@@ -50,7 +55,7 @@ impl Command for ThrottleCommand {
         // We reinitialize a new store and rate limiter every time this command
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
-        let mut store = store::InternalRedisStore::new(&r);
+        let mut store = InternalRedisStore::new(&r);
         let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
         let mut limiter = cell::RateLimiter::new(&mut store,
                                                  cell::RateQuota {
@@ -73,23 +78,6 @@ impl Command for ThrottleCommand {
 
         Ok(())
     }
-
-    // Should return any flags to be registered with the name as a string
-    // separated list. See the Redis module API documentation for a complete
-    // list of the ones that are available.
-    fn str_flags(&self) -> &'static str {
-        "write"
-    }
-}
-
-#[allow(non_snake_case)]
-#[allow(unused_variables)]
-#[no_mangle]
-pub extern "C" fn Throttle_RedisCommand(ctx: *mut raw::RedisModuleCtx,
-                                        argv: *mut *mut raw::RedisModuleString,
-                                        argc: c_int)
-                                        -> raw::Status {
-    Command::harness(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]
@@ -106,21 +94,12 @@ pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
         return raw::Status::Err;
     }
 
-    let command = ThrottleCommand {};
-    if raw::create_command(ctx,
-                           format!("{}\0", command.name()).as_ptr(),
-                           Some(Throttle_RedisCommand),
-                           format!("{}\0", command.str_flags()).as_ptr(),
-                           0,
-                           0,
-                           0) == raw::Status::Err {
-        return raw::Status::Err;
-    }
+    if CL_THROTTLE_COMMAND.register(ctx) == raw::Status::Err { return raw::Status::Err; }
 
     return raw::Status::Ok;
 }
 
 fn parse_i64(arg: &str) -> Result<i64, CellError> {
     arg.parse::<i64>()
-        .map_err(|_| error!("Couldn't parse as integer: {}", arg))
+        .map_err(|_| redis_error!("Couldn't parse as integer: {}", arg))
 }

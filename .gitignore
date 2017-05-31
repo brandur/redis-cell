@@ -2,3 +2,7 @@
 redis.conf*
 target
 Cargo.lock
+
+# IntellJ project formats
+**/*.iml
+.idea

@@ -1,9 +1,3 @@
-// Allow dead code in here in case I want to publish it as a crate at some
-// point.
-#![allow(dead_code)]
-
-extern crate libc;
-
 use libc::{c_int, c_long, c_longlong, size_t};
 
 // Rust can't link against C macros (#define) so we just redefine them here.
@@ -59,7 +53,9 @@ pub fn init(ctx: *mut RedisModuleCtx,
             module_version: c_int,
             api_version: c_int)
             -> Status {
-    unsafe { Export_RedisModule_Init(ctx, modulename, module_version, api_version) }
+    unsafe {
+        Export_RedisModule_Init(ctx, modulename, module_version, api_version)
+    }
 }
 
 
@@ -81,6 +77,17 @@ pub fn call_reply_string_ptr(str: *mut RedisModuleCallReply,
                              len: *mut size_t)
                              -> *const u8 {
     unsafe { RedisModule_CallReplyStringPtr(str, len) }
+}
+
+pub fn call_reply_length(reply: *mut RedisModuleCallReply) -> size_t {
+    unsafe { RedisModule_CallReplyLength(reply) }
+}
+
+pub fn call_reply_array_element(
+     reply: *mut RedisModuleCallReply,
+     idx: size_t
+) -> *mut RedisModuleCallReply {
+    unsafe { RedisModule_CallReplyArrayElement(reply, idx) }
 }
 
 pub fn close_key(kp: *mut RedisModuleKey) {
@@ -196,6 +203,13 @@ extern "C" {
                                                          len: *mut size_t)
                                                          -> *const u8;
 
+    static RedisModule_CallReplyLength: extern "C" fn(str: *mut RedisModuleCallReply) -> size_t;
+
+    static RedisModule_CallReplyArrayElement: extern "C" fn(
+        reply: *mut RedisModuleCallReply,
+        idx: size_t
+    ) -> *mut RedisModuleCallReply;
+
     static RedisModule_CloseKey: extern "C" fn(kp: *mut RedisModuleKey);
 
     static RedisModule_CreateCommand: extern "C" fn(ctx: *mut RedisModuleCtx,
@@ -278,6 +292,7 @@ pub mod call1 {
     }
 
     #[allow(improper_ctypes)]
+    #[allow(dead_code)]
     extern "C" {
         pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
                                                    cmdname: *const u8,
@@ -331,6 +346,33 @@ pub mod call3 {
                                                    arg0: *mut raw::RedisModuleString,
                                                    arg1: *mut raw::RedisModuleString,
                                                    arg2: *mut raw::RedisModuleString)
+                                                   -> *mut raw::RedisModuleCallReply;
+    }
+}
+
+pub mod call4 {
+    use redis::raw;
+
+    pub fn call(ctx: *mut raw::RedisModuleCtx,
+                cmdname: *const u8,
+                fmt: *const u8,
+                arg0: *mut raw::RedisModuleString,
+                arg1: *mut raw::RedisModuleString,
+                arg2: *mut raw::RedisModuleString,
+                arg3: *mut raw::RedisModuleString)
+                -> *mut raw::RedisModuleCallReply {
+        unsafe { RedisModule_Call(ctx, cmdname, fmt, arg0, arg1, arg2, arg3) }
+    }
+
+    #[allow(improper_ctypes)]
+    extern "C" {
+        pub static RedisModule_Call: extern "C" fn(ctx: *mut raw::RedisModuleCtx,
+                                                   cmdname: *const u8,
+                                                   fmt: *const u8,
+                                                   arg0: *mut raw::RedisModuleString,
+                                                   arg1: *mut raw::RedisModuleString,
+                                                   arg2: *mut raw::RedisModuleString,
+                                                   arg3: *mut raw::RedisModuleString)
                                                    -> *mut raw::RedisModuleCallReply;
     }
 }

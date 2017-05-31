@@ -1,4 +1,5 @@
-macro_rules! error {
+#[macro_export]
+macro_rules! redis_error {
     ($message:expr) => {
         CellError::generic($message)
     };
@@ -7,7 +8,8 @@ macro_rules! error {
     }
 }
 
-macro_rules! log_debug {
+#[macro_export]
+macro_rules! redis_log_debug {
     ($logger:expr, $target:expr) => {
         if cfg!(debug_assertions) {
             $logger.log_debug($target)

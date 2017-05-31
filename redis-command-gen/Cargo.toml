@@ -1,0 +1,11 @@
+[package]
+name = "redis-command-gen"
+version = "0.1.0"
+authors = ["Brandur <brandur@mutelight.org>", "dwerner <dan.werner@gmail.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "0.11"
+quote = "0.3"

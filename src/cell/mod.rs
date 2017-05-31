@@ -1,8 +1,7 @@
-extern crate time;
-
 pub mod store;
+use time;
 
-use error::CellError;
+use redis_module_sys::error::CellError;
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
 // operations before returning an error.
@@ -73,7 +72,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
                 .period
                 .num_nanoseconds()
                 .unwrap() *
-                                                                   (quota.max_burst + 1)),
+                (quota.max_burst + 1)),
             emission_interval: quota.max_rate.period,
             limit: quota.max_burst + 1,
             store: store,
@@ -123,7 +122,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
         // because our entire operation will execute atomically.
         let mut i = 0;
         loop {
-            log_debug!(self.store, "iteration = {}", i);
+            redis_log_debug!(self.store, "iteration = {}", i);
 
             // tat refers to the theoretical arrival time that would be expected
             // from equally spaced requests at exactly the rate limit.
@@ -133,7 +132,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
                 -1 => now,
                 _ => from_nanoseconds(tat_val),
             };
-            log_debug!(self.store,
+            redis_log_debug!(self.store,
                        "tat = {} (from store = {})",
                        tat.rfc3339(),
                        tat_val);
@@ -143,17 +142,17 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
             } else {
                 tat + increment
             };
-            log_debug!(self.store, "new_tat = {}", new_tat.rfc3339());
+            redis_log_debug!(self.store, "new_tat = {}", new_tat.rfc3339());
 
             // Block the request if the next permitted time is in the future.
             let allow_at = new_tat - self.delay_variation_tolerance;
             let diff = now - allow_at;
-            log_debug!(self.store,
+            redis_log_debug!(self.store,
                        "diff = {}ms (now - allow_at)",
                        diff.num_milliseconds());
 
             if diff.num_seconds() < 0 {
-                log_debug!(self.store,
+                redis_log_debug!(self.store,
                            "BLOCKED retry_after = {}ms",
                            -diff.num_milliseconds());
 
@@ -168,7 +167,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
 
             let new_tat_ns = nanoseconds(new_tat);
             ttl = new_tat - now;
-            log_debug!(self.store, "ALLOWED");
+            redis_log_debug!(self.store, "ALLOWED");
 
             // If the key was originally missing, set it if if doesn't exist.
             // If it was there, try to compare and swap.
@@ -190,7 +189,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
 
             i += 1;
             if i > MAX_CAS_ATTEMPTS {
-                return Err(error!("Failed to update rate limit after \
+                return Err(redis_error!("Failed to update rate limit after \
                                                            {} attempts",
                                   MAX_CAS_ATTEMPTS));
             }
@@ -199,9 +198,9 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
         let next = self.delay_variation_tolerance - ttl;
         if next > -self.emission_interval {
             rlc.remaining = (next.num_microseconds().unwrap() as f64 /
-                             self.emission_interval
-                .num_microseconds()
-                .unwrap() as f64) as i64;
+                self.emission_interval
+                    .num_microseconds()
+                    .unwrap() as f64) as i64;
         }
         rlc.reset_after = ttl;
 
@@ -210,30 +209,30 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
     }
 
     fn log_end(&self, rlc: &RateLimitResult) {
-        log_debug!(self.store,
+        redis_log_debug!(self.store,
                    "limit = {} remaining = {}",
                    self.limit,
                    rlc.remaining);
-        log_debug!(self.store,
+        redis_log_debug!(self.store,
                    "retry_after = {}ms",
                    rlc.retry_after.num_milliseconds());
-        log_debug!(self.store,
+        redis_log_debug!(self.store,
                    "reset_after = {}ms (ttl)",
                    rlc.reset_after.num_milliseconds());
     }
 
     fn log_start(&self, key: &str, quantity: i64, increment: time::Duration) {
-        log_debug!(self.store, "");
-        log_debug!(self.store, "-----");
-        log_debug!(self.store, "key = {}", key);
-        log_debug!(self.store, "quantity = {}", quantity);
-        log_debug!(self.store,
+        redis_log_debug!(self.store, "");
+        redis_log_debug!(self.store, "-----");
+        redis_log_debug!(self.store, "key = {}", key);
+        redis_log_debug!(self.store, "quantity = {}", quantity);
+        redis_log_debug!(self.store,
                    "delay_variation_tolerance = {}ms",
                    self.delay_variation_tolerance.num_milliseconds());
-        log_debug!(self.store,
+        redis_log_debug!(self.store,
                    "emission_interval = {}ms",
                    self.emission_interval.num_milliseconds());
-        log_debug!(self.store,
+        redis_log_debug!(self.store,
                    "tat_increment = {}ms (emission_interval * quantity)",
                    increment.num_milliseconds());
     }
@@ -275,25 +274,25 @@ mod tests {
     #[test]
     fn it_creates_rates_from_hours() {
         assert_eq!(Rate { period: time::Duration::minutes(10) },
-                   Rate::per_hour(6))
+        Rate::per_hour(6))
     }
 
     #[test]
     fn it_creates_rates_from_minutes() {
         assert_eq!(Rate { period: time::Duration::seconds(10) },
-                   Rate::per_minute(6))
+        Rate::per_minute(6))
     }
 
     #[test]
     fn it_creates_rates_from_periods() {
         assert_eq!(Rate { period: time::Duration::seconds(20) },
-                   Rate::per_period(6, time::Duration::minutes(2)))
+        Rate::per_period(6, time::Duration::minutes(2)))
     }
 
     #[test]
     fn it_creates_rates_from_seconds() {
         assert_eq!(Rate { period: time::Duration::milliseconds(200) },
-                   Rate::per_second(5))
+        Rate::per_second(5))
     }
 
     // Skip rustfmt so we don't mangle our big test case array below which is
@@ -318,44 +317,44 @@ mod tests {
 
             // You can never make a request larger than the maximum.
             RateLimitCase::new(0, start, 6, 5, time::Duration::zero(),
-                time::Duration::seconds(-1), true),
+                               time::Duration::seconds(-1), true),
 
             // Rate limit normal requests appropriately.
             RateLimitCase::new(1, start, 1, 4, time::Duration::seconds(1),
-                time::Duration::seconds(-1), false),
+                               time::Duration::seconds(-1), false),
             RateLimitCase::new(2, start, 1, 3, time::Duration::seconds(2),
-                time::Duration::seconds(-1), false),
+                               time::Duration::seconds(-1), false),
             RateLimitCase::new(3, start, 1, 2, time::Duration::seconds(3),
-                time::Duration::seconds(-1), false),
+                               time::Duration::seconds(-1), false),
             RateLimitCase::new(4, start, 1, 1, time::Duration::seconds(4),
-                time::Duration::seconds(-1), false),
+                               time::Duration::seconds(-1), false),
             RateLimitCase::new(5, start, 1, 0, time::Duration::seconds(5),
-                time::Duration::seconds(-1), false),
+                               time::Duration::seconds(-1), false),
             RateLimitCase::new(6, start, 1, 0, time::Duration::seconds(5),
-                time::Duration::seconds(1), true),
+                               time::Duration::seconds(1), true),
 
             RateLimitCase::new(7, start + time::Duration::milliseconds(3000), 1, 2,
-                time::Duration::milliseconds(3000), time::Duration::seconds(-1), false),
+                               time::Duration::milliseconds(3000), time::Duration::seconds(-1), false),
             RateLimitCase::new(8, start + time::Duration::milliseconds(3100), 1, 1,
-                time::Duration::milliseconds(3900), time::Duration::seconds(-1), false),
+                               time::Duration::milliseconds(3900), time::Duration::seconds(-1), false),
             RateLimitCase::new(9, start + time::Duration::milliseconds(4000), 1, 1,
-                time::Duration::milliseconds(4000), time::Duration::seconds(-1), false),
+                               time::Duration::milliseconds(4000), time::Duration::seconds(-1), false),
             RateLimitCase::new(10, start + time::Duration::milliseconds(8000), 1, 4,
-                time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
+                               time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
             RateLimitCase::new(11, start + time::Duration::milliseconds(9500), 1, 4,
-                time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
+                               time::Duration::milliseconds(1000), time::Duration::seconds(-1), false),
 
             // Zero-volume request just peeks at the state.
             RateLimitCase::new(12, start + time::Duration::milliseconds(9500), 0, 4,
-                time::Duration::seconds(1), time::Duration::seconds(-1), false),
+                               time::Duration::seconds(1), time::Duration::seconds(-1), false),
 
             // High-volume request uses up more of the limit.
             RateLimitCase::new(13, start + time::Duration::milliseconds(9500), 2, 2,
-                time::Duration::seconds(3), time::Duration::seconds(-1), false),
+                               time::Duration::seconds(3), time::Duration::seconds(-1), false),
 
             // Large requests cannot exceed limits
             RateLimitCase::new(14, start + time::Duration::milliseconds(9500), 5, 2,
-                time::Duration::seconds(3), time::Duration::seconds(3), true),
+                               time::Duration::seconds(3), time::Duration::seconds(3), true),
         ];
 
         for case in cases.iter() {
@@ -389,10 +388,10 @@ mod tests {
 
         let mut limiter = RateLimiter::new(&mut test_store, quota);
 
-        let err = error!("Failed to update rate limit after 5 attempts");
+        let err = redis_error!("Failed to update rate limit after 5 attempts");
 
         assert_eq!(err.description(),
-                   limiter.rate_limit("foo", 1).unwrap_err().description());
+        limiter.rate_limit("foo", 1).unwrap_err().description());
     }
 
     #[derive(Debug)]
@@ -483,3 +482,4 @@ mod tests {
         }
     }
 }
+

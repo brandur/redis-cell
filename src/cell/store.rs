@@ -1,7 +1,7 @@
-extern crate time;
-
-use error::CellError;
+use redis_module_sys::error::CellError;
 use redis;
+use time;
+
 use std::collections::HashMap;
 
 /// Store exposes the atomic data store operations that the GCRA rate limiter
@@ -241,3 +241,4 @@ mod tests {
         assert_eq!(false, res2.unwrap());
     }
 }
+
