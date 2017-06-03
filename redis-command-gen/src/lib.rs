@@ -84,10 +84,10 @@ fn impl_gen_redis_command(ast: &syn::MacroInput) -> quote::Tokens {
         impl #struct_ident {
             fn register(
                 &self,
-                ctx: *mut RedisModuleCtx,
-            ) -> raw::Status {
+                ctx: *mut ::redis_module_sys::redis::raw::RedisModuleCtx,
+            ) -> ::redis_module_sys::redis::raw::Status {
 
-                let status = raw::create_command(
+                let status = ::redis_module_sys::redis::raw::create_command(
                    ctx,
                    format!("{}\0", self.name()).as_ptr(),
                    Some(#extern_func_ident),
@@ -101,7 +101,7 @@ fn impl_gen_redis_command(ast: &syn::MacroInput) -> quote::Tokens {
             }
         }
 
-        impl RedisCommandAttrs for #struct_ident {
+        impl ::redis_module_sys::redis::RedisCommandAttrs for #struct_ident {
             fn name(&self) -> &'static str { #command_name }
             fn str_flags(&self) -> &'static str { #flags }
         }
@@ -110,11 +110,11 @@ fn impl_gen_redis_command(ast: &syn::MacroInput) -> quote::Tokens {
         #[allow(unused_variables)]
         #[no_mangle]
         pub extern "C" fn #extern_func_ident(
-            ctx: *mut raw::RedisModuleCtx,
-            argv: *mut *mut raw::RedisModuleString,
-            argc: c_int
-        ) -> raw::Status {
-            RedisCommand::harness(&#static_ident, ctx, argv, argc)
+            ctx: *mut ::redis_module_sys::redis::raw::RedisModuleCtx,
+            argv: *mut *mut ::redis_module_sys::redis::raw::RedisModuleString,
+            argc: libc::c_int
+        ) -> ::redis_module_sys::redis::raw::Status {
+            ::redis_module_sys::redis::RedisCommand::harness(&#static_ident, ctx, argv, argc)
         }
 
     };
