@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate bitflags;
 
 #[macro_use]
@@ -12,22 +11,14 @@ extern crate time;
 
 pub mod cell;
 
-use libc::c_int;
-
 use redis_module_sys::redis;
 use redis_module_sys::redis::{
     RedisCommand,
     RedisCommandAttrs,
-    Reply,
-    raw,
 };
 
 use cell::store::InternalRedisStore;
 use redis_module_sys::error::CellError;
-use redis_module_sys::redis::raw::RedisModuleCtx;
-
-const MODULE_NAME: &'static str = "redis-cell";
-const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
 #[derive(RedisCommandAttrs)]
@@ -80,24 +71,7 @@ impl RedisCommand for ThrottleCommand {
     }
 }
 
-#[allow(non_snake_case)]
-#[allow(unused_variables)]
-#[no_mangle]
-pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
-                                     argv: *mut *mut raw::RedisModuleString,
-                                     argc: c_int)
-                                     -> raw::Status {
-    if raw::init(ctx,
-                 format!("{}\0", MODULE_NAME).as_ptr(),
-                 MODULE_VERSION,
-                 raw::REDISMODULE_APIVER_1) == raw::Status::Err {
-        return raw::Status::Err;
-    }
-
-    if CL_THROTTLE_COMMAND.register(ctx) == raw::Status::Err { return raw::Status::Err; }
-
-    return raw::Status::Ok;
-}
+redis_module!("redis-cell", 1, CL_THROTTLE_COMMAND);
 
 fn parse_i64(arg: &str) -> Result<i64, CellError> {
     arg.parse::<i64>()
