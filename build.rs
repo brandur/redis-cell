@@ -7,7 +7,7 @@ fn main() {
     // include/redismodule.h is just vendored in from the Redis project and
     // src/redismodule.c is just a stub that includes it and plays a few other
     // tricks that we need to complete the build.
-    gcc::Config::new()
+    gcc::Build::new()
         .file("src/redismodule.c")
         .include("include/")
         .compile("libredismodule.a");
