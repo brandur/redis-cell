@@ -1,5 +1,7 @@
 // This should not be public in the long run. Build an abstraction interface
 // instead.
+#[cfg_attr(feature = "cargo-clippy",
+           allow(redundant_field_names, suspicious_arithmetic_impl))]
 pub mod raw;
 
 use error::CellError;
@@ -10,8 +12,8 @@ use std::ptr;
 use std::string;
 use time;
 
-/// LogLevel is a level of logging to be specified with a Redis log directive.
-#[derive(Debug)]
+/// `LogLevel` is a level of logging to be specified with a Redis log directive.
+#[derive(Clone, Copy, Debug)]
 pub enum LogLevel {
     Debug,
     Notice,
@@ -55,7 +57,7 @@ impl Command {
         argv: *mut *mut raw::RedisModuleString,
         argc: c_int,
     ) -> raw::Status {
-        let r = Redis { ctx: ctx };
+        let r = Redis { ctx };
         let args = parse_args(argv, argc).unwrap();
         let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         match command.run(r, str_args.as_slice()) {
@@ -134,11 +136,8 @@ impl Redis {
         let reply_res = manifest_redis_reply(raw_reply);
         raw::free_call_reply(raw_reply);
 
-        match reply_res {
-            Ok(ref reply) => {
-                log_debug!(self, "{} [ended] result = {:?}", command, reply);
-            }
-            Err(_) => (),
+        if let Ok(ref reply) = reply_res {
+            log_debug!(self, "{} [ended] result = {:?}", command, reply);
         }
 
         reply_res
@@ -217,21 +216,20 @@ impl Redis {
 
     pub fn reply_string(&self, message: &str) -> Result<(), CellError> {
         let redis_str = self.create_string(message);
-        let res = handle_status(
+        handle_status(
             raw::reply_with_string(self.ctx, redis_str.str_inner),
             "Could not reply with string",
-        );
-        res
+        )
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum KeyMode {
     Read,
     ReadWrite,
 }
 
-/// RedisKey is an abstraction over a Redis key that allows readonly
+/// `RedisKey` is an abstraction over a Redis key that allows readonly
 /// operations.
 ///
 /// Its primary function is to ensure the proper deallocation of resources when
@@ -251,9 +249,9 @@ impl RedisKey {
         let key_str = RedisString::create(ctx, key);
         let key_inner = raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::Read));
         RedisKey {
-            ctx:       ctx,
-            key_inner: key_inner,
-            key_str:   key_str,
+            ctx,
+            key_inner,
+            key_str,
         }
     }
 
@@ -280,8 +278,8 @@ impl Drop for RedisKey {
     }
 }
 
-/// RedisKey is an abstraction over a Redis key that allows read and write
-/// operations.
+/// `RedisKeyWritable` is an abstraction over a Redis key that allows read and
+/// write operations.
 pub struct RedisKeyWritable {
     ctx:       *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
@@ -300,9 +298,9 @@ impl RedisKeyWritable {
         let key_inner =
             raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::ReadWrite));
         RedisKeyWritable {
-            ctx:       ctx,
-            key_inner: key_inner,
-            key_str:   key_str,
+            ctx,
+            key_inner,
+            key_str,
         }
     }
 
@@ -338,11 +336,10 @@ impl RedisKeyWritable {
 
     pub fn write(&self, val: &str) -> Result<(), CellError> {
         let val_str = RedisString::create(self.ctx, val);
-        let res = match raw::string_set(self.key_inner, val_str.str_inner) {
+        match raw::string_set(self.key_inner, val_str.str_inner) {
             raw::Status::Ok => Ok(()),
             raw::Status::Err => Err(error!("Error while setting key")),
-        };
-        res
+        }
     }
 }
 
@@ -353,7 +350,7 @@ impl Drop for RedisKeyWritable {
     }
 }
 
-/// RedisString is an abstraction over a Redis string.
+/// `RedisString` is an abstraction over a Redis string.
 ///
 /// Its primary function is to ensure the proper deallocation of resources when
 /// it goes out of scope. Redis normally requires that strings be managed
@@ -369,10 +366,7 @@ pub struct RedisString {
 impl RedisString {
     fn create(ctx: *mut raw::RedisModuleCtx, s: &str) -> RedisString {
         let str_inner = raw::create_string(ctx, format!("{}\0", s).as_ptr(), s.len());
-        RedisString {
-            ctx:       ctx,
-            str_inner: str_inner,
-        }
+        RedisString { ctx, str_inner }
     }
 }
 
@@ -400,8 +394,8 @@ fn manifest_redis_reply(
             let mut length: size_t = 0;
             let bytes = raw::call_reply_string_ptr(reply, &mut length);
             from_byte_string(bytes, length)
-                .map(|s| Reply::String(s))
-                .map_err(|e| CellError::from(e))
+                .map(Reply::String)
+                .map_err(CellError::from)
         }
         raw::ReplyType::Unknown => Ok(Reply::Unknown),
 
