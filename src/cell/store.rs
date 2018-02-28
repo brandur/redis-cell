@@ -16,12 +16,13 @@ pub trait Store {
     /// Compares the value at the given key with a known old value and swaps it
     /// for a new value if and only if they're equal. Also sets the key's TTL
     /// until it expires.
-    fn compare_and_swap_with_ttl(&mut self,
-                                 key: &str,
-                                 old: i64,
-                                 new: i64,
-                                 ttl: time::Duration)
-                                 -> Result<bool, CellError>;
+    fn compare_and_swap_with_ttl(
+        &mut self,
+        key: &str,
+        old: i64,
+        new: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError>;
 
     /// Gets the given key's value and the current time as dictated by the
     /// store (this is done so that rate limiters running on a variety of
@@ -34,11 +35,12 @@ pub trait Store {
 
     /// Sets the given key to the given value if and only if it doesn't already
     /// exit. Whether or not the key existed previously it's given a new TTL.
-    fn set_if_not_exists_with_ttl(&mut self,
-                                  key: &str,
-                                  value: i64,
-                                  ttl: time::Duration)
-                                  -> Result<bool, CellError>;
+    fn set_if_not_exists_with_ttl(
+        &mut self,
+        key: &str,
+        value: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError>;
 }
 
 /// MemoryStore is a simple implementation of Store that persists data in an
@@ -47,33 +49,34 @@ pub trait Store {
 /// Note that the implementation is currently not thread-safe and will need a
 /// mutex added if it's ever used for anything serious.
 pub struct MemoryStore {
-    map: HashMap<String, i64>,
+    map:     HashMap<String, i64>,
     verbose: bool,
 }
 
 impl MemoryStore {
     pub fn new() -> MemoryStore {
         MemoryStore {
-            map: HashMap::new(),
+            map:     HashMap::new(),
             verbose: false,
         }
     }
 
     pub fn new_verbose() -> MemoryStore {
         MemoryStore {
-            map: HashMap::new(),
+            map:     HashMap::new(),
             verbose: true,
         }
     }
 }
 
 impl Store for MemoryStore {
-    fn compare_and_swap_with_ttl(&mut self,
-                                 key: &str,
-                                 old: i64,
-                                 new: i64,
-                                 _: time::Duration)
-                                 -> Result<bool, CellError> {
+    fn compare_and_swap_with_ttl(
+        &mut self,
+        key: &str,
+        old: i64,
+        new: i64,
+        _: time::Duration,
+    ) -> Result<bool, CellError> {
         match self.map.get(key) {
             Some(n) if *n != old => return Ok(false),
             _ => (),
@@ -96,11 +99,12 @@ impl Store for MemoryStore {
         }
     }
 
-    fn set_if_not_exists_with_ttl(&mut self,
-                                  key: &str,
-                                  value: i64,
-                                  _: time::Duration)
-                                  -> Result<bool, CellError> {
+    fn set_if_not_exists_with_ttl(
+        &mut self,
+        key: &str,
+        value: i64,
+        _: time::Duration,
+    ) -> Result<bool, CellError> {
         match self.map.get(key) {
             Some(_) => Ok(false),
             None => {
@@ -126,18 +130,20 @@ impl<'a> InternalRedisStore<'a> {
 }
 
 impl<'a> Store for InternalRedisStore<'a> {
-    fn compare_and_swap_with_ttl(&mut self,
-                                 key: &str,
-                                 old: i64,
-                                 new: i64,
-                                 ttl: time::Duration)
-                                 -> Result<bool, CellError> {
+    fn compare_and_swap_with_ttl(
+        &mut self,
+        key: &str,
+        old: i64,
+        new: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
         match key.read()? {
             Some(s) => {
-                // While we will usually have a value here to parse, it's possible that in the case
-                // of a very fast rate the key's already been expired even since the beginning of
-                // this operation. Check whether the value is empty to handle that possibility.
+                // While we will usually have a value here to parse, it's possible that
+                // in the case of a very fast rate the key's already been
+                // expired even since the beginning of this operation.
+                // Check whether the value is empty to handle that possibility.
                 if !s.is_empty() && s.parse::<i64>()? == old {
                     // Still the old value: perform the swap.
                     key.write(new.to_string().as_str())?;
@@ -172,11 +178,12 @@ impl<'a> Store for InternalRedisStore<'a> {
         self.r.log_debug(message);
     }
 
-    fn set_if_not_exists_with_ttl(&mut self,
-                                  key: &str,
-                                  value: i64,
-                                  ttl: time::Duration)
-                                  -> Result<bool, CellError> {
+    fn set_if_not_exists_with_ttl(
+        &mut self,
+        key: &str,
+        value: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
         let res = if key.is_empty()? {
             key.write(value.to_string().as_str())?;
@@ -188,7 +195,6 @@ impl<'a> Store for InternalRedisStore<'a> {
         res
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -226,7 +232,8 @@ mod tests {
         assert_eq!(-1, res1.unwrap().0);
 
         // Now try setting a value.
-        let _ = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero())
+        let _ = store
+            .set_if_not_exists_with_ttl("foo", 123, time::Duration::zero())
             .unwrap();
 
         let res2 = store.get_with_time("foo");

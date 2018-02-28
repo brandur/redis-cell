@@ -20,8 +20,7 @@ const MODULE_NAME: &'static str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
-struct ThrottleCommand {
-}
+struct ThrottleCommand {}
 
 impl Command for ThrottleCommand {
     // Should return the name of the command to be registered.
@@ -32,9 +31,11 @@ impl Command for ThrottleCommand {
     // Run the command.
     fn run(&self, r: redis::Redis, args: &[&str]) -> Result<(), CellError> {
         if args.len() != 5 && args.len() != 6 {
-            return Err(error!("Usage: {} <key> <max_burst> <count per period> \
-                               <period> [<quantity>]",
-                              self.name()));
+            return Err(error!(
+                "Usage: {} <key> <max_burst> <count per period> \
+                 <period> [<quantity>]",
+                self.name()
+            ));
         }
 
         // the first argument is command name "cl.throttle" (ignore it)
@@ -52,11 +53,13 @@ impl Command for ThrottleCommand {
         // it's not that big of a problem.
         let mut store = store::InternalRedisStore::new(&r);
         let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
-        let mut limiter = cell::RateLimiter::new(&mut store,
-                                                 cell::RateQuota {
-                                                     max_burst: max_burst,
-                                                     max_rate: rate,
-                                                 });
+        let mut limiter = cell::RateLimiter::new(
+            &mut store,
+            cell::RateQuota {
+                max_burst: max_burst,
+                max_rate:  rate,
+            },
+        );
 
         let (throttled, rate_limit_result) = limiter.rate_limit(key, quantity)?;
 
@@ -85,35 +88,43 @@ impl Command for ThrottleCommand {
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
 #[no_mangle]
-pub extern "C" fn Throttle_RedisCommand(ctx: *mut raw::RedisModuleCtx,
-                                        argv: *mut *mut raw::RedisModuleString,
-                                        argc: c_int)
-                                        -> raw::Status {
+pub extern "C" fn Throttle_RedisCommand(
+    ctx: *mut raw::RedisModuleCtx,
+    argv: *mut *mut raw::RedisModuleString,
+    argc: c_int,
+) -> raw::Status {
     Command::harness(&ThrottleCommand {}, ctx, argv, argc)
 }
 
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
 #[no_mangle]
-pub extern "C" fn RedisModule_OnLoad(ctx: *mut raw::RedisModuleCtx,
-                                     argv: *mut *mut raw::RedisModuleString,
-                                     argc: c_int)
-                                     -> raw::Status {
-    if raw::init(ctx,
-                 format!("{}\0", MODULE_NAME).as_ptr(),
-                 MODULE_VERSION,
-                 raw::REDISMODULE_APIVER_1) == raw::Status::Err {
+pub extern "C" fn RedisModule_OnLoad(
+    ctx: *mut raw::RedisModuleCtx,
+    argv: *mut *mut raw::RedisModuleString,
+    argc: c_int,
+) -> raw::Status {
+    if raw::init(
+        ctx,
+        format!("{}\0", MODULE_NAME).as_ptr(),
+        MODULE_VERSION,
+        raw::REDISMODULE_APIVER_1,
+    ) == raw::Status::Err
+    {
         return raw::Status::Err;
     }
 
     let command = ThrottleCommand {};
-    if raw::create_command(ctx,
-                           format!("{}\0", command.name()).as_ptr(),
-                           Some(Throttle_RedisCommand),
-                           format!("{}\0", command.str_flags()).as_ptr(),
-                           0,
-                           0,
-                           0) == raw::Status::Err {
+    if raw::create_command(
+        ctx,
+        format!("{}\0", command.name()).as_ptr(),
+        Some(Throttle_RedisCommand),
+        format!("{}\0", command.str_flags()).as_ptr(),
+        0,
+        0,
+        0,
+    ) == raw::Status::Err
+    {
         return raw::Status::Err;
     }
 

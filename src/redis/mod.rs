@@ -49,20 +49,22 @@ pub trait Command {
 impl Command {
     /// Provides a basic wrapper for a command's implementation that parses
     /// arguments to Rust data types and handles the OK/ERR reply back to Redis.
-    pub fn harness(command: &Command,
-                   ctx: *mut raw::RedisModuleCtx,
-                   argv: *mut *mut raw::RedisModuleString,
-                   argc: c_int)
-                   -> raw::Status {
+    pub fn harness(
+        command: &Command,
+        ctx: *mut raw::RedisModuleCtx,
+        argv: *mut *mut raw::RedisModuleString,
+        argc: c_int,
+    ) -> raw::Status {
         let r = Redis { ctx: ctx };
         let args = parse_args(argv, argc).unwrap();
         let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         match command.run(r, str_args.as_slice()) {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
-                raw::reply_with_error(ctx,
-                                      format!("Cell error: {}\0", e.description())
-                                          .as_ptr());
+                raw::reply_with_error(
+                    ctx,
+                    format!("Cell error: {}\0", e.description()).as_ptr(),
+                );
                 raw::Status::Err
             }
         }
@@ -88,9 +90,8 @@ impl Redis {
         // on the other end anyway so the practical benefit will be minimal.
         let format: String = iter::repeat("s").take(args.len()).collect();
 
-        let terminated_args: Vec<RedisString> = args.iter()
-            .map(|s| self.create_string(s))
-            .collect();
+        let terminated_args: Vec<RedisString> =
+            args.iter().map(|s| self.create_string(s)).collect();
 
         // One would hope that there's a better way to handle a va_list than
         // this, but I can't find it for the life of me.
@@ -105,26 +106,28 @@ impl Redis {
                 //
                 // Still, this works fine and will continue to work as long as
                 // it's left unchanged.
-                raw::call1::call(self.ctx,
-                                 format!("{}\0", command).as_ptr(),
-                                 format!("{}\0", format).as_ptr(),
-                                 terminated_args[0].str_inner)
+                raw::call1::call(
+                    self.ctx,
+                    format!("{}\0", command).as_ptr(),
+                    format!("{}\0", format).as_ptr(),
+                    terminated_args[0].str_inner,
+                )
             }
-            2 => {
-                raw::call2::call(self.ctx,
-                                 format!("{}\0", command).as_ptr(),
-                                 format!("{}\0", format).as_ptr(),
-                                 terminated_args[0].str_inner,
-                                 terminated_args[1].str_inner)
-            }
-            3 => {
-                raw::call3::call(self.ctx,
-                                 format!("{}\0", command).as_ptr(),
-                                 format!("{}\0", format).as_ptr(),
-                                 terminated_args[0].str_inner,
-                                 terminated_args[1].str_inner,
-                                 terminated_args[2].str_inner)
-            }
+            2 => raw::call2::call(
+                self.ctx,
+                format!("{}\0", command).as_ptr(),
+                format!("{}\0", format).as_ptr(),
+                terminated_args[0].str_inner,
+                terminated_args[1].str_inner,
+            ),
+            3 => raw::call3::call(
+                self.ctx,
+                format!("{}\0", command).as_ptr(),
+                format!("{}\0", format).as_ptr(),
+                terminated_args[0].str_inner,
+                terminated_args[1].str_inner,
+                terminated_args[2].str_inner,
+            ),
             _ => return Err(error!("Can't support that many CALL arguments")),
         };
 
@@ -151,16 +154,15 @@ impl Redis {
     /// This method coerces a Redis string that looks like an integer into an
     /// integer response. All other types of replies are passed through
     /// unmodified.
-    pub fn coerce_integer(&self,
-                          reply_res: Result<Reply, CellError>)
-                          -> Result<Reply, CellError> {
+    pub fn coerce_integer(
+        &self,
+        reply_res: Result<Reply, CellError>,
+    ) -> Result<Reply, CellError> {
         match reply_res {
-            Ok(Reply::String(s)) => {
-                match s.parse::<i64>() {
-                    Ok(n) => Ok(Reply::Integer(n)),
-                    _ => Ok(Reply::String(s)),
-                }
-            }
+            Ok(Reply::String(s)) => match s.parse::<i64>() {
+                Ok(n) => Ok(Reply::Integer(n)),
+                _ => Ok(Reply::String(s)),
+            },
             _ => reply_res,
         }
     }
@@ -170,9 +172,11 @@ impl Redis {
     }
 
     pub fn log(&self, level: LogLevel, message: &str) {
-        raw::log(self.ctx,
-                 format!("{:?}\0", level).to_lowercase().as_ptr(),
-                 format!("{}\0", message).as_ptr());
+        raw::log(
+            self.ctx,
+            format!("{:?}\0", level).to_lowercase().as_ptr(),
+            format!("{}\0", message).as_ptr(),
+        );
     }
 
     pub fn log_debug(&self, message: &str) {
@@ -198,19 +202,25 @@ impl Redis {
     /// Used by invoking once with the expected length and then calling any
     /// combination of the other reply_* methods exactly that number of times.
     pub fn reply_array(&self, len: i64) -> Result<(), CellError> {
-        handle_status(raw::reply_with_array(self.ctx, len as c_long),
-                      "Could not reply with long")
+        handle_status(
+            raw::reply_with_array(self.ctx, len as c_long),
+            "Could not reply with long",
+        )
     }
 
     pub fn reply_integer(&self, integer: i64) -> Result<(), CellError> {
-        handle_status(raw::reply_with_long_long(self.ctx, integer as c_longlong),
-                      "Could not reply with longlong")
+        handle_status(
+            raw::reply_with_long_long(self.ctx, integer as c_longlong),
+            "Could not reply with longlong",
+        )
     }
 
     pub fn reply_string(&self, message: &str) -> Result<(), CellError> {
         let redis_str = self.create_string(message);
-        let res = handle_status(raw::reply_with_string(self.ctx, redis_str.str_inner),
-                                "Could not reply with string");
+        let res = handle_status(
+            raw::reply_with_string(self.ctx, redis_str.str_inner),
+            "Could not reply with string",
+        );
         res
     }
 }
@@ -231,9 +241,9 @@ pub enum KeyMode {
 /// operation through the use of the Drop trait.
 #[derive(Debug)]
 pub struct RedisKey {
-    ctx: *mut raw::RedisModuleCtx,
+    ctx:       *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
-    key_str: RedisString,
+    key_str:   RedisString,
 }
 
 impl RedisKey {
@@ -241,9 +251,9 @@ impl RedisKey {
         let key_str = RedisString::create(ctx, key);
         let key_inner = raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::Read));
         RedisKey {
-            ctx: ctx,
+            ctx:       ctx,
             key_inner: key_inner,
-            key_str: key_str,
+            key_str:   key_str,
         }
     }
 
@@ -273,7 +283,7 @@ impl Drop for RedisKey {
 /// RedisKey is an abstraction over a Redis key that allows read and write
 /// operations.
 pub struct RedisKeyWritable {
-    ctx: *mut raw::RedisModuleCtx,
+    ctx:       *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
 
     // The Redis string
@@ -290,9 +300,9 @@ impl RedisKeyWritable {
         let key_inner =
             raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::ReadWrite));
         RedisKeyWritable {
-            ctx: ctx,
+            ctx:       ctx,
             key_inner: key_inner,
-            key_str: key_str,
+            key_str:   key_str,
         }
     }
 
@@ -304,12 +314,10 @@ impl RedisKeyWritable {
     /// so we have to check the key's value instead.
     pub fn is_empty(&self) -> Result<bool, CellError> {
         match self.read()? {
-            Some(s) => {
-                match s.as_str() {
-                    "" => Ok(true),
-                    _ => Ok(false),
-                }
-            }
+            Some(s) => match s.as_str() {
+                "" => Ok(true),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
@@ -354,7 +362,7 @@ impl Drop for RedisKeyWritable {
 /// fault-free operation through the use of the Drop trait.
 #[derive(Debug)]
 pub struct RedisString {
-    ctx: *mut raw::RedisModuleCtx,
+    ctx:       *mut raw::RedisModuleCtx,
     str_inner: *mut raw::RedisModuleString,
 }
 
@@ -362,7 +370,7 @@ impl RedisString {
     fn create(ctx: *mut raw::RedisModuleCtx, s: &str) -> RedisString {
         let str_inner = raw::create_string(ctx, format!("{}\0", s).as_ptr(), s.len());
         RedisString {
-            ctx: ctx,
+            ctx:       ctx,
             str_inner: str_inner,
         }
     }
@@ -382,8 +390,9 @@ fn handle_status(status: raw::Status, message: &str) -> Result<(), CellError> {
     }
 }
 
-fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
-                        -> Result<Reply, CellError> {
+fn manifest_redis_reply(
+    reply: *mut raw::RedisModuleCallReply,
+) -> Result<Reply, CellError> {
     match raw::call_reply_type(reply) {
         raw::ReplyType::Integer => Ok(Reply::Integer(raw::call_reply_integer(reply))),
         raw::ReplyType::Nil => Ok(Reply::Nil),
@@ -404,16 +413,18 @@ fn manifest_redis_reply(reply: *mut raw::RedisModuleCallReply)
     }
 }
 
-fn manifest_redis_string(redis_str: *mut raw::RedisModuleString)
-                         -> Result<String, string::FromUtf8Error> {
+fn manifest_redis_string(
+    redis_str: *mut raw::RedisModuleString,
+) -> Result<String, string::FromUtf8Error> {
     let mut length: size_t = 0;
     let bytes = raw::string_ptr_len(redis_str, &mut length);
     from_byte_string(bytes, length)
 }
 
-fn parse_args(argv: *mut *mut raw::RedisModuleString,
-              argc: c_int)
-              -> Result<Vec<String>, string::FromUtf8Error> {
+fn parse_args(
+    argv: *mut *mut raw::RedisModuleString,
+    argc: c_int,
+) -> Result<Vec<String>, string::FromUtf8Error> {
     let mut args: Vec<String> = Vec::with_capacity(argc as usize);
     for i in 0..argc {
         let redis_str = unsafe { *argv.offset(i as isize) };
@@ -422,9 +433,10 @@ fn parse_args(argv: *mut *mut raw::RedisModuleString,
     Ok(args)
 }
 
-fn from_byte_string(byte_str: *const u8,
-                    length: size_t)
-                    -> Result<String, string::FromUtf8Error> {
+fn from_byte_string(
+    byte_str: *const u8,
+    length: size_t,
+) -> Result<String, string::FromUtf8Error> {
     let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
     for j in 0..length {
         let byte: u8 = unsafe { *byte_str.offset(j as isize) };

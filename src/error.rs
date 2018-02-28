@@ -70,7 +70,9 @@ pub struct GenericError {
 
 impl GenericError {
     pub fn new(message: &str) -> GenericError {
-        GenericError { message: String::from(message) }
+        GenericError {
+            message: String::from(message),
+        }
     }
 }
 

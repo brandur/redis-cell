@@ -18,9 +18,6 @@ env:
     - CRATE_NAME=redis-cell
 
 matrix:
-  allow_failures:
-    - rust: nightly
-
   include:
     # Stable.
     - env: TARGET=x86_64-unknown-linux-gnu
@@ -29,9 +26,13 @@ matrix:
     - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
 
     # Testing other channels
-    - env: TARGET=x86_64-unknown-linux-gnu
+    - env:
+        - NIGHTLY=true
+        - TARGET=x86_64-unknown-linux-gnu
       rust: nightly
-    - env: TARGET=x86_64-apple-darwin
+    - env:
+        - NIGHTLY=true
+        - TARGET=x86_64-apple-darwin
       os: osx
       rust: nightly
 
@@ -41,13 +42,16 @@ install:
   - bash ci/install.sh
   - source ~/.cargo/env || true
 
-before_script: 
-  # Don't fail on failure to install because it's probably because the target
-  # already exists.
-  - (cargo install rustfmt || true)
+before_script:
+  - rustup component add rustfmt-preview
 
 script:
   - bash ci/script.sh
+
+  # Rustfmt is finally available as a preview component outside of nightly, but
+  # unfortunately we're using a few configuration options that are considered
+  # unstable so it still only works on nightly.
+  - if [[ $NIGHTLY == 'true' ]]; then cargo +nightly fmt --all -- --write-mode=diff; fi
 
 after_script: set +e
 
