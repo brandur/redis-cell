@@ -135,7 +135,7 @@ impl<'a> Store for InternalRedisStore<'a> {
         let key = self.r.open_key_writable(key);
         match key.read()? {
             Some(s) => {
-                if s.parse::<i64>()? == old {
+                if !s.is_empty() && s.parse::<i64>()? == old {
                     // Still the old value: perform the swap.
                     key.write(new.to_string().as_str())?;
                     key.set_expire(ttl)?;
