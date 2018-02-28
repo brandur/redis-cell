@@ -1,4 +1,7 @@
-ideal_width = 79
 max_width = 90
-#struct_lit_style = "Visual"
-write_mode = "Overwrite"
+reorder_imports = true
+reorder_imports_in_group = true
+reorder_imported_names = true
+struct_field_align_threshold = 20
+unstable_features = true
+wrap_comments = true
