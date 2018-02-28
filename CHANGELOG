@@ -1,3 +1,12 @@
+0.2.2 2018-02-27
+	* Fix bug where limiting was calculated incorrectly
+	  for rates faster than 1 second (i.e., N operations
+	  per second). [#13]
+	* Fix bug where the case of a value being expired
+	  was not checked in `compare_and_swap_with_ttl`. This
+	  problem also manifested for fast rates smaller than 1
+	  second. [#14]
+
 0.2.1 2017-05-29
 	* Minor build fixes.
 
