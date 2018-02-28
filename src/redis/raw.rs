@@ -11,9 +11,9 @@ use libc::{c_int, c_long, c_longlong, size_t};
 pub const REDISMODULE_APIVER_1: c_int = 1;
 
 bitflags! {
-    pub flags KeyMode: c_int {
-        const KEYMODE_READ = 1,
-        const KEYMODE_WRITE = (1 << 1),
+    pub struct KeyMode: c_int {
+        const READ = 1;
+        const WRITE = (1 << 1);
     }
 }
 
