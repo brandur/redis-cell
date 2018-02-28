@@ -135,6 +135,9 @@ impl<'a> Store for InternalRedisStore<'a> {
         let key = self.r.open_key_writable(key);
         match key.read()? {
             Some(s) => {
+                // While we will usually have a value here to parse, it's possible that in the case
+                // of a very fast rate the key's already been expired even since the beginning of
+                // this operation. Check whether the value is empty to handle that possibility.
                 if !s.is_empty() && s.parse::<i64>()? == old {
                     // Still the old value: perform the swap.
                     key.write(new.to_string().as_str())?;
