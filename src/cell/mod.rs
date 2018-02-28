@@ -152,7 +152,7 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
                        "diff = {}ms (now - allow_at)",
                        diff.num_milliseconds());
 
-            if diff.num_seconds() < 0 {
+            if diff < time::Duration::zero() {
                 log_debug!(self.store,
                            "BLOCKED retry_after = {}ms",
                            -diff.num_milliseconds());
