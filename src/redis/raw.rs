@@ -12,7 +12,7 @@ pub const REDISMODULE_APIVER_1: c_int = 1;
 
 bitflags! {
     pub flags KeyMode: c_int {
-        const KEYMODE_READ = (1 << 0),
+        const KEYMODE_READ = 1,
         const KEYMODE_WRITE = (1 << 1),
     }
 }
@@ -27,7 +27,7 @@ pub enum ReplyType {
     Nil = 4,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Status {
     Ok = 0,
     Err = 1,

@@ -16,7 +16,7 @@ use libc::c_int;
 use redis::Command;
 use redis::raw;
 
-const MODULE_NAME: &'static str = "redis-cell";
+const MODULE_NAME: &str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
 
 // ThrottleCommand provides GCRA rate limiting as a command in Redis.
@@ -55,9 +55,9 @@ impl Command for ThrottleCommand {
         let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
         let mut limiter = cell::RateLimiter::new(
             &mut store,
-            cell::RateQuota {
-                max_burst: max_burst,
-                max_rate:  rate,
+            &cell::RateQuota {
+                max_burst,
+                max_rate: rate,
             },
         );
 
@@ -128,7 +128,7 @@ pub extern "C" fn RedisModule_OnLoad(
         return raw::Status::Err;
     }
 
-    return raw::Status::Ok;
+    raw::Status::Ok
 }
 
 fn parse_i64(arg: &str) -> Result<i64, CellError> {

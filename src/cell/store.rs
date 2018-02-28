@@ -43,11 +43,12 @@ pub trait Store {
     ) -> Result<bool, CellError>;
 }
 
-/// MemoryStore is a simple implementation of Store that persists data in an
-/// in-memory HashMap.
+/// `MemoryStore` is a simple implementation of Store that persists data in an in-memory
+/// `HashMap`.
 ///
-/// Note that the implementation is currently not thread-safe and will need a
-/// mutex added if it's ever used for anything serious.
+/// Note that the implementation is currently not thread-safe and will need a mutex added
+/// if it's ever used for anything serious.
+#[derive(Default)]
 pub struct MemoryStore {
     map:     HashMap<String, i64>,
     verbose: bool,
@@ -55,10 +56,7 @@ pub struct MemoryStore {
 
 impl MemoryStore {
     pub fn new() -> MemoryStore {
-        MemoryStore {
-            map:     HashMap::new(),
-            verbose: false,
-        }
+        Self::default()
     }
 
     pub fn new_verbose() -> MemoryStore {
@@ -115,7 +113,7 @@ impl Store for MemoryStore {
     }
 }
 
-/// InternalRedisStore is a store implementation that uses Redis module APIs in
+/// `InternalRedisStore` is a store implementation that uses Redis module APIs in
 /// that it's designed to run from within a Redis runtime. This allows us to
 /// cut some corners around atomicity because we can safety assume that all
 /// operations will be atomic.
@@ -125,7 +123,7 @@ pub struct InternalRedisStore<'a> {
 
 impl<'a> InternalRedisStore<'a> {
     pub fn new(r: &'a redis::Redis) -> InternalRedisStore<'a> {
-        InternalRedisStore { r: r }
+        InternalRedisStore { r }
     }
 }
 
@@ -204,7 +202,7 @@ mod tests {
 
     #[test]
     fn it_performs_compare_and_swap_with_ttl() {
-        let mut store = MemoryStore::new();
+        let mut store = MemoryStore::default();
 
         // First attempt obviously works.
         let res1 =
@@ -226,7 +224,7 @@ mod tests {
 
     #[test]
     fn it_performs_get_with_time() {
-        let mut store = MemoryStore::new();
+        let mut store = MemoryStore::default();
 
         let res1 = store.get_with_time("foo");
         assert_eq!(-1, res1.unwrap().0);
@@ -242,7 +240,7 @@ mod tests {
 
     #[test]
     fn it_performs_set_if_not_exists_with_ttl() {
-        let mut store = MemoryStore::new();
+        let mut store = MemoryStore::default();
 
         let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
         assert_eq!(true, res1.unwrap());

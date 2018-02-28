@@ -32,7 +32,7 @@ impl Rate {
     pub fn per_period(n: i64, period: time::Duration) -> Rate {
         let ns: i64 = period.num_nanoseconds().unwrap();
         let period = time::Duration::nanoseconds(((ns as f64) / (n as f64)) as i64);
-        Rate { period: period }
+        Rate { period }
     }
 
     pub fn per_second(n: i64) -> Rate {
@@ -65,14 +65,14 @@ pub struct RateLimiter<'a, T: 'a + store::Store> {
 }
 
 impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
-    pub fn new(store: &'a mut T, quota: RateQuota) -> RateLimiter<'a, T> {
+    pub fn new(store: &'a mut T, quota: &RateQuota) -> RateLimiter<'a, T> {
         RateLimiter {
             delay_variation_tolerance: time::Duration::nanoseconds(
                 quota.max_rate.period.num_nanoseconds().unwrap() * (quota.max_burst + 1),
             ),
-            emission_interval:         quota.max_rate.period,
-            limit:                     quota.max_burst + 1,
-            store:                     store,
+            emission_interval: quota.max_rate.period,
+            limit: quota.max_burst + 1,
+            store,
         }
     }
 
@@ -270,7 +270,7 @@ fn from_nanoseconds(x: i64) -> time::Tm {
 
 fn nanoseconds(x: time::Tm) -> i64 {
     let ts = x.to_timespec();
-    ts.sec * (10 as i64).pow(9) + (ts.nsec as i64)
+    ts.sec * (10 as i64).pow(9) + i64::from(ts.nsec)
 }
 
 #[cfg(test)]
@@ -344,7 +344,7 @@ mod tests {
         let start = time::now_utc();
         let mut memory_store = store::MemoryStore::new_verbose();
         let mut test_store = TestStore::new(&mut memory_store);
-        let mut limiter = RateLimiter::new(&mut test_store, quota);
+        let mut limiter = RateLimiter::new(&mut test_store, &quota);
 
         let cases = [
             //
@@ -422,7 +422,7 @@ mod tests {
         let mut test_store = TestStore::new(&mut memory_store);
         test_store.fail_updates = true;
 
-        let mut limiter = RateLimiter::new(&mut test_store, quota);
+        let mut limiter = RateLimiter::new(&mut test_store, &quota);
 
         let err = error!("Failed to update rate limit after 5 attempts");
 
