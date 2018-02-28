@@ -1,5 +1,8 @@
-// This should not be public in the long run. Build an abstraction interface
+// `raw` should not be public in the long run. Build an abstraction interface
 // instead.
+//
+// We have to disable a couple Clippy checks here because we'll otherwise have
+// warnings thrown from within macros provided by the `bigflags` package.
 #[cfg_attr(feature = "cargo-clippy",
            allow(redundant_field_names, suspicious_arithmetic_impl))]
 pub mod raw;
@@ -442,12 +445,15 @@ fn from_byte_string(
 
 fn read_key(key: *mut raw::RedisModuleKey) -> Result<String, string::FromUtf8Error> {
     let mut length: size_t = 0;
-    from_byte_string(raw::string_dma(key, &mut length, raw::KEYMODE_READ), length)
+    from_byte_string(
+        raw::string_dma(key, &mut length, raw::KeyMode::READ),
+        length,
+    )
 }
 
 fn to_raw_mode(mode: KeyMode) -> raw::KeyMode {
     match mode {
-        KeyMode::Read => raw::KEYMODE_READ,
-        KeyMode::ReadWrite => raw::KEYMODE_READ | raw::KEYMODE_WRITE,
+        KeyMode::Read => raw::KeyMode::READ,
+        KeyMode::ReadWrite => raw::KeyMode::READ | raw::KeyMode::WRITE,
     }
 }
