@@ -3,6 +3,9 @@ name = "redis-cell"
 version = "0.2.2"
 authors = ["Brandur <brandur@mutelight.org>"]
 build = "build.rs"
+description = "A Redis module that provides rate limiting in Redis as a single command."
+license = "MIT"
+repository = "https://github.com/brandur/redis-cell"
 
 [lib]
 crate-type = ["dylib"]
