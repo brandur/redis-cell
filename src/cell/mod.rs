@@ -179,7 +179,8 @@ impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
             // Both of these cases are designed to work around the fact that
             // another limiter could be running in parallel.
             let updated = if tat_val == -1 {
-                self.store.set_if_not_exists_with_ttl(key, new_tat_ns, ttl)?
+                self.store
+                    .set_if_not_exists_with_ttl(key, new_tat_ns, ttl)?
             } else {
                 self.store
                     .compare_and_swap_with_ttl(key, tat_val, new_tat_ns, ttl)?

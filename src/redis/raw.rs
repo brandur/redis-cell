@@ -100,13 +100,7 @@ pub fn create_command(
 ) -> Status {
     unsafe {
         RedisModule_CreateCommand(
-            ctx,
-            name,
-            cmdfunc,
-            strflags,
-            firstkey,
-            lastkey,
-            keystep,
+            ctx, name, cmdfunc, strflags, firstkey, lastkey, keystep,
         )
     }
 }
@@ -207,8 +201,7 @@ extern "C" {
 
     static RedisModule_CloseKey: extern "C" fn(kp: *mut RedisModuleKey);
 
-    static RedisModule_CreateCommand:
-        extern "C" fn(
+    static RedisModule_CreateCommand: extern "C" fn(
         ctx: *mut RedisModuleCtx,
         name: *const u8,
         cmdfunc: Option<RedisModuleCmdFunc>,
@@ -218,9 +211,11 @@ extern "C" {
         keystep: c_int,
     ) -> Status;
 
-    static RedisModule_CreateString:
-        extern "C" fn(ctx: *mut RedisModuleCtx, ptr: *const u8, len: size_t)
-        -> *mut RedisModuleString;
+    static RedisModule_CreateString: extern "C" fn(
+        ctx: *mut RedisModuleCtx,
+        ptr: *const u8,
+        len: size_t,
+    ) -> *mut RedisModuleString;
 
     static RedisModule_FreeString:
         extern "C" fn(ctx: *mut RedisModuleCtx, str: *mut RedisModuleString);
@@ -230,8 +225,7 @@ extern "C" {
     static RedisModule_Log:
         extern "C" fn(ctx: *mut RedisModuleCtx, level: *const u8, fmt: *const u8);
 
-    static RedisModule_OpenKey:
-        extern "C" fn(
+    static RedisModule_OpenKey: extern "C" fn(
         ctx: *mut RedisModuleCtx,
         keyname: *mut RedisModuleString,
         mode: KeyMode,
@@ -252,8 +246,11 @@ extern "C" {
     static RedisModule_SetExpire:
         extern "C" fn(key: *mut RedisModuleKey, expire: c_longlong) -> Status;
 
-    static RedisModule_StringDMA:
-        extern "C" fn(key: *mut RedisModuleKey, len: *mut size_t, mode: KeyMode) -> *const u8;
+    static RedisModule_StringDMA: extern "C" fn(
+        key: *mut RedisModuleKey,
+        len: *mut size_t,
+        mode: KeyMode,
+    ) -> *const u8;
 
     static RedisModule_StringPtrLen:
         extern "C" fn(str: *mut RedisModuleString, len: *mut size_t) -> *const u8;
@@ -261,8 +258,7 @@ extern "C" {
     static RedisModule_StringSet:
         extern "C" fn(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Status;
 
-    static RedisModule_Call:
-        extern "C" fn(
+    static RedisModule_Call: extern "C" fn(
         ctx: *mut RedisModuleCtx,
         cmdname: *const u8,
         fmt: *const u8,
@@ -284,13 +280,13 @@ pub mod call1 {
 
     #[allow(improper_ctypes)]
     extern "C" {
-        pub static RedisModule_Call:
-            extern "C" fn(
+        pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,
             fmt: *const u8,
             arg0: *mut raw::RedisModuleString,
-        ) -> *mut raw::RedisModuleCallReply;
+        )
+            -> *mut raw::RedisModuleCallReply;
     }
 }
 
@@ -309,14 +305,14 @@ pub mod call2 {
 
     #[allow(improper_ctypes)]
     extern "C" {
-        pub static RedisModule_Call:
-            extern "C" fn(
+        pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,
             fmt: *const u8,
             arg0: *mut raw::RedisModuleString,
             arg1: *mut raw::RedisModuleString,
-        ) -> *mut raw::RedisModuleCallReply;
+        )
+            -> *mut raw::RedisModuleCallReply;
     }
 }
 
@@ -336,14 +332,14 @@ pub mod call3 {
 
     #[allow(improper_ctypes)]
     extern "C" {
-        pub static RedisModule_Call:
-            extern "C" fn(
+        pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,
             fmt: *const u8,
             arg0: *mut raw::RedisModuleString,
             arg1: *mut raw::RedisModuleString,
             arg2: *mut raw::RedisModuleString,
-        ) -> *mut raw::RedisModuleCallReply;
+        )
+            -> *mut raw::RedisModuleCallReply;
     }
 }
