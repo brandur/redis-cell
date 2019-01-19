@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 
 fn main() {
     // Build a Redis pseudo-library so that we have symbols that we can link
@@ -7,9 +7,9 @@ fn main() {
     // include/redismodule.h is just vendored in from the Redis project and
     // src/redismodule.c is just a stub that includes it and plays a few other
     // tricks that we need to complete the build.
-    gcc::Build::new()
+    cc::Build::new()
         .file("src/redismodule.c")
         .include("include/")
         .compile("libredismodule.a");
-    // The GCC module emits `rustc-link-lib=static=redismodule` for us.
+    // The cc module emits `rustc-link-lib=static=redismodule` for us.
 }
