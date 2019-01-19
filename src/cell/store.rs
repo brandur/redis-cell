@@ -43,6 +43,38 @@ pub trait Store {
     ) -> Result<bool, CellError>;
 }
 
+// Implement the `Store` trait for a mutable reference. This is useful so that
+// we don't have to assign a lifetime (`'a`) to `RateLimiter`, thus simplifying
+// our code there by quite a bit.
+impl<'a, T: Store> Store for &'a mut T {
+    fn compare_and_swap_with_ttl(
+        &mut self,
+        key: &str,
+        old: i64,
+        new: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError> {
+        (**self).compare_and_swap_with_ttl(key, old, new, ttl)
+    }
+
+    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+        (**self).get_with_time(key)
+    }
+
+    fn log_debug(&self, message: &str) {
+        (**self).log_debug(message)
+    }
+
+    fn set_if_not_exists_with_ttl(
+        &mut self,
+        key: &str,
+        value: i64,
+        ttl: time::Duration,
+    ) -> Result<bool, CellError> {
+        (**self).set_if_not_exists_with_ttl(key, value, ttl)
+    }
+}
+
 /// `MemoryStore` is a simple implementation of Store that persists data in an
 /// in-memory `HashMap`.
 ///
