@@ -48,8 +48,8 @@ pub struct RateLimitResult {
     pub retry_after: time::Duration,
 }
 
-pub struct RateLimiter<'a, T: 'a + store::Store> {
-    pub store: &'a mut T,
+pub struct RateLimiter<T> {
+    pub store: T,
 
     /// Think of the DVT as our flexibility: how far can you deviate from the
     /// nominal equally spaced schedule? If you like leaky buckets, think about
@@ -64,8 +64,8 @@ pub struct RateLimiter<'a, T: 'a + store::Store> {
     limit: i64,
 }
 
-impl<'a, T: 'a + store::Store> RateLimiter<'a, T> {
-    pub fn new(store: &'a mut T, quota: &RateQuota) -> RateLimiter<'a, T> {
+impl<T: store::Store> RateLimiter<T> {
+    pub fn new(store: T, quota: &RateQuota) -> Self {
         RateLimiter {
             delay_variation_tolerance: time::Duration::nanoseconds(
                 quota.max_rate.period.num_nanoseconds().unwrap() * (quota.max_burst + 1),
