@@ -43,20 +43,17 @@ install:
   - source ~/.cargo/env || true
 
 before_script:
-  - if [[ $NIGHTLY == 'true' ]]; then rustup component add rustfmt-preview; fi
-  - if [[ $NIGHTLY == 'true' ]]; then cargo +nightly install clippy --force; fi
+  - rustup component add rustfmt
+  - rustup component add clippy
 
 script:
   - bash ci/script.sh
 
-  # Rustfmt is finally available as a preview component outside of nightly, but
-  # unfortunately we're using a few configuration options that are considered
-  # unstable so it still only works on nightly.
-  - if [[ $NIGHTLY == 'true' ]]; then cargo +nightly fmt --all -- --write-mode=diff; fi
+  # So close to being on stable, but using a few unstable options in
+  # `rustfmt.toml` (e.g. `wrap_comments` which is *still* not stable!).
+  - if [[ $NIGHTLY == 'true' ]]; then cargo fmt --all -- --check; fi
 
-  # The `-D warnings` argument means that Clippy will send a non-zero exit code
-  # if it encounters any linting problems (thus failing the build).
-  - if [[ $NIGHTLY == 'true' ]]; then cargo +nightly clippy -- -D warnings; fi
+  - cargo clippy -- -D warnings
 
 after_script: set +e
 

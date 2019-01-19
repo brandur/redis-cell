@@ -43,11 +43,11 @@ pub trait Store {
     ) -> Result<bool, CellError>;
 }
 
-/// `MemoryStore` is a simple implementation of Store that persists data in an in-memory
-/// `HashMap`.
+/// `MemoryStore` is a simple implementation of Store that persists data in an
+/// in-memory `HashMap`.
 ///
-/// Note that the implementation is currently not thread-safe and will need a mutex added
-/// if it's ever used for anything serious.
+/// Note that the implementation is currently not thread-safe and will need a
+/// mutex added if it's ever used for anything serious.
 #[derive(Default)]
 pub struct MemoryStore {
     map:     HashMap<String, i64>,
@@ -113,8 +113,8 @@ impl Store for MemoryStore {
     }
 }
 
-/// `InternalRedisStore` is a store implementation that uses Redis module APIs in
-/// that it's designed to run from within a Redis runtime. This allows us to
+/// `InternalRedisStore` is a store implementation that uses Redis module APIs
+/// in that it's designed to run from within a Redis runtime. This allows us to
 /// cut some corners around atomicity because we can safety assume that all
 /// operations will be atomic.
 pub struct InternalRedisStore<'a> {

@@ -13,8 +13,8 @@ mod redis;
 use cell::store;
 use error::CellError;
 use libc::c_int;
-use redis::Command;
 use redis::raw;
+use redis::Command;
 
 const MODULE_NAME: &str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
