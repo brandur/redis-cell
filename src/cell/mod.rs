@@ -334,7 +334,7 @@ mod tests {
 
     // Skip rustfmt so we don't mangle our big test case array below which is
     // already hard enough to read.
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     #[test]
     fn it_rate_limits() {
         let limit = 5;
@@ -403,7 +403,7 @@ mod tests {
 
             println!("limited = {:?}", limited);
             println!("{:?}", results);
-            println!("");
+            println!();
 
             assert_eq!(case.limited, limited);
             assert_eq!(limit, results.limit);
@@ -455,13 +455,13 @@ mod tests {
             limited: bool,
         ) -> RateLimitCase {
             return RateLimitCase {
-                num:         num,
-                now:         now,
-                volume:      volume,
-                remaining:   remaining,
-                reset_after: reset_after,
-                retry_after: retry_after,
-                limited:     limited,
+                num,
+                now,
+                volume,
+                remaining,
+                reset_after,
+                retry_after,
+                limited,
             };
         }
     }
@@ -478,9 +478,9 @@ mod tests {
     impl<'a> TestStore<'a> {
         fn new(store: &'a mut store::MemoryStore) -> TestStore {
             TestStore {
-                clock:        time::empty_tm(),
+                clock: time::empty_tm(),
                 fail_updates: false,
-                store:        store,
+                store,
             }
         }
     }
