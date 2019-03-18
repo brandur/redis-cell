@@ -120,9 +120,9 @@ pub extern "C" fn RedisModule_OnLoad(
         format!("{}\0", command.name()).as_ptr(),
         Some(Throttle_RedisCommand),
         format!("{}\0", command.str_flags()).as_ptr(),
-        1,
-        1,
-        1,
+        1, // firstkey: first argument that's a key
+        1, // lastkey: last argument that's a key
+        1, // keystep: the step between first and last key
     ) == raw::Status::Err
     {
         return raw::Status::Err;
