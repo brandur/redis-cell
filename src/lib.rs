@@ -120,9 +120,9 @@ pub extern "C" fn RedisModule_OnLoad(
         format!("{}\0", command.name()).as_ptr(),
         Some(Throttle_RedisCommand),
         format!("{}\0", command.str_flags()).as_ptr(),
-        0,
-        0,
-        0,
+        1,
+        1,
+        1,
     ) == raw::Status::Err
     {
         return raw::Status::Err;
