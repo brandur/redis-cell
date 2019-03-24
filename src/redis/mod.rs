@@ -144,7 +144,7 @@ impl Redis {
         if let Ok(ref reply) = reply_res {
             log_debug!(self, "{} [ended] result = {:?}", command, reply);
         }
-
+        raw::replicate_verbatim(self.ctx);
         reply_res
     }
 

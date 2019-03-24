@@ -175,6 +175,11 @@ pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Stat
     unsafe { RedisModule_StringSet(key, str) }
 }
 
+//Calls the same command on the replicas
+pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) {
+    unsafe {RedisModule_ReplicateVerbatim(ctx) }
+}
+
 // Redis doesn't make this easy for us by exporting a library, so instead what
 // we do is bake redismodule.h's symbols into a library of our construction
 // during build and link against that. See build.rs for details.
@@ -264,6 +269,9 @@ extern "C" {
         fmt: *const u8,
         args: *const *mut RedisModuleString,
     ) -> *mut RedisModuleCallReply;
+
+    static RedisModule_ReplicateVerbatim:
+        extern "C" fn(ctx: *mut RedisModuleCtx);
 }
 
 pub mod call1 {
