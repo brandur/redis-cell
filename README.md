@@ -153,7 +153,7 @@ CI has checks for both [Rustfmt][rustfmt] and [Clippy][clippy] (Rust's linter).
 These can be installed and run locally using Rustup's component framework:
 
     rustup component add rustfmt
-    cargo fmt
+    cargo fmt --all
 
     rustup component add clippy
     cargo clippy -- -D warnings
