@@ -141,8 +141,48 @@ commonly found in many C programs.
 This is free software under the terms of MIT the license (see the file
 `LICENSE` for details).
 
+## Development
+
+### Tests and checks
+
+Run the test suite:
+
+    cargo test
+
+CI has checks for both [Rustfmt][rustfmt] and [Clippy][clippy] (Rust's linter).
+These can be installed and run locally using Rustup's component framework:
+
+    rustup component add rustfmt
+    cargo fmt
+
+    rustup component add clippy
+    cargo clippy -- -D warnings
+
+### Releasing
+
+Releases are performed automatically from a script in CI which activates when a
+new tag of the format `v1.2.3` is released. The script builds binaries for all
+target systems and uploads them to GitHub's [releases][releases] page.
+
+To perform a release:
+
+1. Add a changelog entry in `CHANGELOG.md` using the existing format.
+2. Bump the version number in `Cargo.toml`.
+3. Commit these changes with a message like `Bump to version 1.2.3`.
+4. Tag the release with `git tag v1.2.3` (make sure to include a leading `v`).
+5. `ggpush --tags`
+6. Edit the new release's title and body in [GitHub][releases]. Use the
+   contents for the new version from `CHANGELOG.md` as the release's body,
+   which allows Markdown content.
+
 [benchmarks]: https://gist.github.com/brandur/90698498bd543598d00df46e32be3268
+[clippy]: https://github.com/rust-lang/rust-clippy
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
 [redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
 [releases]: https://github.com/brandur/redis-cell/releases
 [rust-downloads]: https://www.rust-lang.org/en-US/downloads.html
+[rustfmt]: https://github.com/rust-lang/rustfmt
+
+<!--
+# vim: set tw=79:
+-->
