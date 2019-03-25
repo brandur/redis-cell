@@ -133,6 +133,11 @@ pub fn open_key(
     unsafe { RedisModule_OpenKey(ctx, keyname, mode) }
 }
 
+//Calls the same command on the replicas
+pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) {
+    unsafe { RedisModule_ReplicateVerbatim(ctx) }
+}
+
 pub fn reply_with_array(ctx: *mut RedisModuleCtx, len: c_long) -> Status {
     unsafe { RedisModule_ReplyWithArray(ctx, len) }
 }
@@ -175,11 +180,6 @@ pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Stat
     unsafe { RedisModule_StringSet(key, str) }
 }
 
-//Calls the same command on the replicas
-pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) {
-    unsafe { RedisModule_ReplicateVerbatim(ctx) }
-}
-
 // Redis doesn't make this easy for us by exporting a library, so instead what
 // we do is bake redismodule.h's symbols into a library of our construction
 // during build and link against that. See build.rs for details.
@@ -193,10 +193,15 @@ extern "C" {
         api_version: c_int,
     ) -> Status;
 
+    static RedisModule_Call: extern "C" fn(
+        ctx: *mut RedisModuleCtx,
+        cmdname: *const u8,
+        fmt: *const u8,
+        args: *const *mut RedisModuleString,
+    ) -> *mut RedisModuleCallReply;
+
     static RedisModule_CallReplyType:
         extern "C" fn(reply: *mut RedisModuleCallReply) -> ReplyType;
-
-    static RedisModule_FreeCallReply: extern "C" fn(reply: *mut RedisModuleCallReply);
 
     static RedisModule_CallReplyInteger:
         extern "C" fn(reply: *mut RedisModuleCallReply) -> c_longlong;
@@ -222,6 +227,8 @@ extern "C" {
         len: size_t,
     ) -> *mut RedisModuleString;
 
+    static RedisModule_FreeCallReply: extern "C" fn(reply: *mut RedisModuleCallReply);
+
     static RedisModule_FreeString:
         extern "C" fn(ctx: *mut RedisModuleCtx, str: *mut RedisModuleString);
 
@@ -235,6 +242,8 @@ extern "C" {
         keyname: *mut RedisModuleString,
         mode: KeyMode,
     ) -> *mut RedisModuleKey;
+
+    static RedisModule_ReplicateVerbatim: extern "C" fn(ctx: *mut RedisModuleCtx);
 
     static RedisModule_ReplyWithArray:
         extern "C" fn(ctx: *mut RedisModuleCtx, len: c_long) -> Status;
@@ -262,15 +271,6 @@ extern "C" {
 
     static RedisModule_StringSet:
         extern "C" fn(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Status;
-
-    static RedisModule_Call: extern "C" fn(
-        ctx: *mut RedisModuleCtx,
-        cmdname: *const u8,
-        fmt: *const u8,
-        args: *const *mut RedisModuleString,
-    ) -> *mut RedisModuleCallReply;
-
-    static RedisModule_ReplicateVerbatim: extern "C" fn(ctx: *mut RedisModuleCtx);
 }
 
 pub mod call1 {
