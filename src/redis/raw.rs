@@ -133,8 +133,8 @@ pub fn open_key(
     unsafe { RedisModule_OpenKey(ctx, keyname, mode) }
 }
 
-//Calls the same command on the replicas
-pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) {
+// Causes a command to be replicated exactly as invoked on replicas.
+pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) -> Status {
     unsafe { RedisModule_ReplicateVerbatim(ctx) }
 }
 
@@ -243,7 +243,8 @@ extern "C" {
         mode: KeyMode,
     ) -> *mut RedisModuleKey;
 
-    static RedisModule_ReplicateVerbatim: extern "C" fn(ctx: *mut RedisModuleCtx);
+    static RedisModule_ReplicateVerbatim:
+        extern "C" fn(ctx: *mut RedisModuleCtx) -> Status;
 
     static RedisModule_ReplyWithArray:
         extern "C" fn(ctx: *mut RedisModuleCtx, len: c_long) -> Status;
