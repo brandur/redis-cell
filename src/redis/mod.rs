@@ -144,7 +144,26 @@ impl Redis {
         if let Ok(ref reply) = reply_res {
             log_debug!(self, "{} [ended] result = {:?}", command, reply);
         }
-        raw::replicate_verbatim(self.ctx);
+
+        // Tell Redis that it's okay to replicate the command with the same
+        // parameters out to replicas.
+        //
+        // This is not strictly correct. Because the rate limiting function
+        // uses time as input, the replicas will end up with a slightly
+        // different result. However, given the domain of rate limiting, those
+        // results will be close enough for almost all purposes.
+        //
+        // A possible improvement is switching to `RedisModule_Replicate` and
+        // adding a new command (or maybe just new parameters) that allows
+        // injecting a timestamp. This would allow a master to transmit its
+        // exact time out to replicas which would make sure their results are
+        // identical.
+        if let raw::Status::Err = raw::replicate_verbatim(self.ctx) {
+            // Handle a possible error for hygiene, but the documentation specifically
+            // states that the function always returns `REDISMODULE_OK`.
+            return Err(error!("Unexpected replication response"));
+        }
+
         reply_res
     }
 
