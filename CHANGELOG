@@ -1,3 +1,8 @@
+0.2.4 2019-03-24
+	* Add a replication invocation to allow Redis Cluster
+	  compatibility. [#31]
+	* Minor documentation fixups. [#32]
+
 0.2.3 2019-03-18
 	* Fix firstkey/lastkey/keystep arguments for command
 	  creation which allows redis-cell to work correctly
