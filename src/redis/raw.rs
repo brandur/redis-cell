@@ -177,7 +177,7 @@ pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Stat
 
 //Calls the same command on the replicas
 pub fn replicate_verbatim(ctx: *mut RedisModuleCtx) {
-    unsafe {RedisModule_ReplicateVerbatim(ctx) }
+    unsafe { RedisModule_ReplicateVerbatim(ctx) }
 }
 
 // Redis doesn't make this easy for us by exporting a library, so instead what
@@ -270,8 +270,7 @@ extern "C" {
         args: *const *mut RedisModuleString,
     ) -> *mut RedisModuleCallReply;
 
-    static RedisModule_ReplicateVerbatim:
-        extern "C" fn(ctx: *mut RedisModuleCtx);
+    static RedisModule_ReplicateVerbatim: extern "C" fn(ctx: *mut RedisModuleCtx);
 }
 
 pub mod call1 {
