@@ -44,7 +44,14 @@ install:
 
 before_script:
   - rustup component add rustfmt
-  - rustup component add clippy
+
+  # I'm not clear as to exactly why, but Clippy is occasionally unavailable in
+  # certain Nightly builds. This site does a good job of tracking that:
+  #
+  #     https://rust-lang.github.io/rustup-components-history/index.html
+  #
+  # For now, I've had to remove it to keep the build green.
+  - if [[ -z "$NIGHTLY" ]]; then rustup component add clippy; fi
 
 script:
   - bash ci/script.sh
@@ -53,7 +60,8 @@ script:
   # `rustfmt.toml` (e.g. `wrap_comments` which is *still* not stable!).
   - if [[ $NIGHTLY == 'true' ]]; then cargo fmt --all -- --check; fi
 
-  - cargo clippy -- -D warnings
+    # See comment in `before_script`.
+  - if [[ -z "$NIGHTLY" ]]; then cargo clippy -- -D warnings; fi
 
 after_script: set +e
 
