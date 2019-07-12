@@ -178,7 +178,7 @@ To perform a release:
 [benchmarks]: https://gist.github.com/brandur/90698498bd543598d00df46e32be3268
 [clippy]: https://github.com/rust-lang/rust-clippy
 [gcra]: https://en.wikipedia.org/wiki/Generic_cell_rate_algorithm
-[redis-modules]: https://github.com/antirez/redis/blob/unstable/src/modules/INTRO.md
+[redis-modules]: https://github.com/antirez/redis-doc/blob/master/topics/modules-intro.md
 [releases]: https://github.com/brandur/redis-cell/releases
 [rust-downloads]: https://www.rust-lang.org/en-US/downloads.html
 [rustfmt]: https://github.com/rust-lang/rustfmt
