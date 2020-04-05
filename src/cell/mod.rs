@@ -31,6 +31,14 @@ impl Rate {
     /// be 200 ms.
     pub fn per_period(n: i64, period: time::Duration) -> Rate {
         let ns: i64 = period.num_nanoseconds().unwrap();
+
+        // Don't rely on floating point math to get here.
+        if n == 0 || ns == 0 {
+            return Rate {
+                period: time::Duration::nanoseconds(0),
+            };
+        }
+
         let period = time::Duration::nanoseconds(((ns as f64) / (n as f64)) as i64);
         Rate { period }
     }
@@ -97,6 +105,10 @@ impl<T: store::Store> RateLimiter<T> {
             retry_after: time::Duration::seconds(-1),
             reset_after: time::Duration::seconds(-1),
         };
+
+        if self.emission_interval == time::Duration::nanoseconds(0) {
+            return Err(error!("Zero rates are not supported"));
+        }
 
         let increment = time::Duration::nanoseconds(
             self.emission_interval.num_nanoseconds().unwrap() * quantity,
@@ -331,6 +343,25 @@ mod tests {
         )
     }
 
+    #[test]
+    fn it_supports_zero_rates() {
+        // Zero actions
+        assert_eq!(
+            Rate {
+                period: time::Duration::nanoseconds(0),
+            },
+            Rate::per_period(0, time::Duration::nanoseconds(1))
+        );
+
+        // Zero period
+        assert_eq!(
+            Rate {
+                period: time::Duration::nanoseconds(0),
+            },
+            Rate::per_period(1, time::Duration::nanoseconds(0))
+        );
+    }
+
     // Skip rustfmt so we don't mangle our big test case array below which is
     // already hard enough to read.
     #[rustfmt::skip]
@@ -410,6 +441,24 @@ mod tests {
             assert_eq!(case.reset_after, results.reset_after);
             assert_eq!(case.retry_after, results.retry_after);
         }
+    }
+
+    #[test]
+    fn it_does_not_support_zero_rates() {
+        let quota = RateQuota {
+            max_burst: 10,
+            max_rate:  Rate::per_period(0, time::Duration::seconds(0)),
+        };
+        let mut memory_store = store::MemoryStore::new_verbose();
+
+        let mut limiter = RateLimiter::new(&mut memory_store, &quota);
+
+        let err = error!("Zero rates are not supported");
+
+        assert_eq!(
+            err.to_string(),
+            limiter.rate_limit("foo", 1).unwrap_err().to_string()
+        );
     }
 
     #[test]
