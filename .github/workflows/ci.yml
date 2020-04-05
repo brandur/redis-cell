@@ -1,0 +1,233 @@
+name: sorg CI
+
+on:
+  pull_request:
+  push:
+  schedule:
+    # Weekly.
+    - cron: "0 0 * * 0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - 1.38.0
+          - stable
+    timeout-minutes: 5
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: "Cache: Cargo registry"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo index"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo build"
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Install: Rust toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          components: clippy, rustfmt
+          override: true
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+
+      - name: "Cargo: Check"
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+      - name: "Cargo: Build"
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: "Cargo: Test"
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      - name: "Check: Clippy"
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+      - name: "Check: Rustfmt"
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  # Very, very similar to the `build` job above, but defined separately because
+  # individual components like Clippy and Rustfmt are often not available in
+  # nightly builds, and the build will fail if we try to add them. Therefore,
+  # this is the exact same thing minus the Clippy/Rustfmt checks.
+  build-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: "Cache: Cargo registry"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo index"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo build"
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Install: Rust toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          profile: minimal
+          toolchain: nightly
+
+      - name: "Cargo: Check"
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+      - name: "Cargo: Build"
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: "Cargo: Test"
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  # TODO: Release steps don't yet publish artifacts. Do that.
+
+  release:
+    # if: github.ref == 'refs/heads/master'
+    needs:
+      - build
+      - build-nightly
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - armv7-unknown-linux-gnueabihf
+          - powerpc64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+    timeout-minutes: 5
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: "Cache: Cargo registry"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo index"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo build"
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Install: Rust toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: stable
+
+      - name: "Cargo: Build release"
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target=${{ matrix.target }}
+          use-cross: true
+
+  # A separate release step for Mac OS. Technically this seems like something
+  # that might fit into a build matrix, but in practice the architecture
+  # targets for Mac OS versus Ubuntu are completing exclusive, so the exclude
+  # list would be huge. Unfortunately this results in more copy + paste, but so
+  # it is.
+  release-macos:
+    # if: github.ref == 'refs/heads/master'
+    needs:
+      - build
+      - build-nightly
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-apple-darwin
+    timeout-minutes: 5
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: "Cache: Cargo registry"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo index"
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Cache: Cargo build"
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: "Install: Rust toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          profile: minimal
+          target: ${{ matrix.target }}
+          toolchain: stable
+
+      - name: "Cargo: Build release"
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target=${{ matrix.target }}
+          use-cross: true
