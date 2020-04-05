@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.5 - 2020-04-05
+* [#42](https://github.com/brandur/redis-cell/pull/42) Explicitly don't support zero rates
+
 ## 0.2.4 - 2019-03-24
 * [#31](https://github.com/brandur/redis-cell/pull/31) Add a replication invocation to allow Redis Cluster compatibility.
 * [#32](https://github.com/brandur/redis-cell/pull/32) Minor documentation fixups.
