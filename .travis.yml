@@ -43,8 +43,6 @@ install:
   - source ~/.cargo/env || true
 
 before_script:
-  - rustup component add rustfmt
-
   # I'm not clear as to exactly why, but Clippy is occasionally unavailable in
   # certain Nightly builds. This site does a good job of tracking that:
   #
@@ -53,15 +51,18 @@ before_script:
   # For now, I've had to remove it to keep the build green.
   - if [[ -z "$NIGHTLY" ]]; then rustup component add clippy; fi
 
+  # And the same goes for Rustfmt these days unfortunately (I saw some
+  # suggestion that it's borked until version 2 can be released?).
+  - if [[ -z "$NIGHTLY" ]]; then rustup component add rustfmt; fi
+
 script:
   - bash ci/script.sh
 
-  # So close to being on stable, but using a few unstable options in
-  # `rustfmt.toml` (e.g. `wrap_comments` which is *still* not stable!).
-  - if [[ $NIGHTLY == 'true' ]]; then cargo fmt --all -- --check; fi
-
-    # See comment in `before_script`.
+  # See comment in `before_script`.
   - if [[ -z "$NIGHTLY" ]]; then cargo clippy -- -D warnings; fi
+
+  # See comment in `before_script`.
+  - if [[ -z "$NIGHTLY" ]]; then cargo fmt --all -- --check; fi
 
 after_script: set +e
 

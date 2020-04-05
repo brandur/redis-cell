@@ -1,5 +1,9 @@
 max_width = 90
 reorder_imports = true
-struct_field_align_threshold = 20
-unstable_features = true
-wrap_comments = true
+
+# Would love to use these, but they appear to be permanently unstable.
+# Rustfmt's recently stopped working entirely on Nightly which makes them even
+# more impractical to use, so turning them off for now.
+# struct_field_align_threshold = 20
+# unstable_features = true
+# wrap_comments = true

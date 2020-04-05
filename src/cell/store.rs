@@ -82,7 +82,7 @@ impl<'a, T: Store> Store for &'a mut T {
 /// mutex added if it's ever used for anything serious.
 #[derive(Default)]
 pub struct MemoryStore {
-    map:     HashMap<String, i64>,
+    map: HashMap<String, i64>,
     verbose: bool,
 }
 
@@ -93,7 +93,7 @@ impl MemoryStore {
 
     pub fn new_verbose() -> MemoryStore {
         MemoryStore {
-            map:     HashMap::new(),
+            map: HashMap::new(),
             verbose: true,
         }
     }
