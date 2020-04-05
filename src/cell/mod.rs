@@ -280,7 +280,6 @@ mod tests {
 
     use cell::*;
     use error::CellError;
-    use std::error::Error;
 
     #[test]
     fn it_creates_rates_from_days() {
@@ -428,8 +427,8 @@ mod tests {
         let err = error!("Failed to update rate limit after 5 attempts");
 
         assert_eq!(
-            err.description(),
-            limiter.rate_limit("foo", 1).unwrap_err().description()
+            err.to_string(),
+            limiter.rate_limit("foo", 1).unwrap_err().to_string()
         );
     }
 

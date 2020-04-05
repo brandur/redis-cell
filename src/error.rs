@@ -30,7 +30,7 @@ impl From<std::num::ParseIntError> for CellError {
 impl fmt::Display for CellError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            // Both underlying errors already impl `Display`, so we defer to
+            // All underlying errors already impl `Display`, so we defer to
             // their implementations.
             CellError::Generic(ref err) => write!(f, "{}", err),
             CellError::FromUtf8(ref err) => write!(f, "{}", err),
@@ -40,17 +40,7 @@ impl fmt::Display for CellError {
 }
 
 impl error::Error for CellError {
-    fn description(&self) -> &str {
-        // Both underlying errors already impl `Error`, so we defer to their
-        // implementations.
-        match *self {
-            CellError::Generic(ref err) => err.description(),
-            CellError::FromUtf8(ref err) => err.description(),
-            CellError::ParseInt(ref err) => err.description(),
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         match *self {
             // N.B. Both of these implicitly cast `err` from their concrete
             // types (either `&io::Error` or `&num::ParseIntError`)
@@ -87,7 +77,7 @@ impl<'a> error::Error for GenericError {
         self.message.as_str()
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }

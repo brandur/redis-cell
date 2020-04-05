@@ -11,7 +11,6 @@ pub mod raw;
 
 use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
-use std::error::Error;
 use std::iter;
 use std::ptr;
 use std::string;
@@ -53,11 +52,11 @@ pub trait Command {
     fn str_flags(&self) -> &'static str;
 }
 
-impl Command {
+impl dyn Command {
     /// Provides a basic wrapper for a command's implementation that parses
     /// arguments to Rust data types and handles the OK/ERR reply back to Redis.
     pub fn harness(
-        command: &Command,
+        command: &dyn Command,
         ctx: *mut raw::RedisModuleCtx,
         argv: *mut *mut raw::RedisModuleString,
         argc: c_int,
@@ -70,7 +69,7 @@ impl Command {
             Err(e) => {
                 raw::reply_with_error(
                     ctx,
-                    format!("Cell error: {}\0", e.description()).as_ptr(),
+                    format!("Cell error: {}\0", e.to_string()).as_ptr(),
                 );
                 raw::Status::Err
             }
