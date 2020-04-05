@@ -1,5 +1,8 @@
 name: sorg CI
 
+env:
+  CRATE_NAME: redis-cell
+
 on:
   pull_request:
   push:
@@ -8,131 +11,180 @@ on:
     - cron: "0 0 * * 0"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - 1.38.0
-          - stable
-    timeout-minutes: 5
 
-    steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v2
+  #
+  # BUILD JOBS
+  #
 
-      - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+  #build:
+    #runs-on: ubuntu-latest
+    #strategy:
+      #matrix:
+        #rust:
+          ## - 1.38.0
+          #- stable
+    #timeout-minutes: 5
 
-      - name: "Cache: Cargo index"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    #steps:
+      #- name: 'Checkout'
+        #uses: actions/checkout@v2
 
-      - name: "Cache: Cargo build"
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      #- name: "Cache: Cargo registry"
+        #uses: actions/cache@v1
+        #with:
+          #path: ~/.cargo/registry
+          #key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
-        with:
-          components: clippy, rustfmt
-          override: true
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
+      #- name: "Cache: Cargo index"
+        #uses: actions/cache@v1
+        #with:
+          #path: ~/.cargo/git
+          #key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: "Cargo: Check"
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+      #- name: "Cache: Cargo build"
+        #uses: actions/cache@v1
+        #with:
+          #path: target
+          #key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: "Cargo: Build"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+      #- name: "Install: Rust toolchain"
+        #uses: actions-rs/toolchain@v1
+        #with:
+          #components: clippy, rustfmt
+          #override: true
+          #profile: minimal
+          #toolchain: ${{ matrix.rust }}
 
-      - name: "Cargo: Test"
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+      #- name: "Cargo: Check"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: check
 
-      - name: "Check: Clippy"
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      #- name: "Cargo: Build"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: build
 
-      - name: "Check: Rustfmt"
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      #- name: "Cargo: Test"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: test
+
+      #- name: "Check: Clippy"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: clippy
+          #args: -- -D warnings
+
+      #- name: "Check: Rustfmt"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: fmt
+          #args: --all -- --check
 
   # Very, very similar to the `build` job above, but defined separately because
   # individual components like Clippy and Rustfmt are often not available in
   # nightly builds, and the build will fail if we try to add them. Therefore,
   # this is the exact same thing minus the Clippy/Rustfmt checks.
-  build-nightly:
+  #build_nightly:
+    #runs-on: ubuntu-latest
+    #timeout-minutes: 5
+
+    #steps:
+      #- name: 'Checkout'
+        #uses: actions/checkout@v2
+
+      #- name: "Cache: Cargo registry"
+        #uses: actions/cache@v1
+        #with:
+          #path: ~/.cargo/registry
+          #key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      #- name: "Cache: Cargo index"
+        #uses: actions/cache@v1
+        #with:
+          #path: ~/.cargo/git
+          #key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      #- name: "Cache: Cargo build"
+        #uses: actions/cache@v1
+        #with:
+          #path: target
+          #key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      #- name: "Install: Rust toolchain"
+        #uses: actions-rs/toolchain@v1
+        #with:
+          #override: true
+          #profile: minimal
+          #toolchain: nightly
+
+      #- name: "Cargo: Check"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: check
+
+      #- name: "Cargo: Build"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: build
+
+      #- name: "Cargo: Test"
+        #uses: actions-rs/cargo@v1
+        #with:
+          #command: test
+
+  #
+  # RELEASE JOBS
+  #
+  # Note that releases are only pushed on `vX.X.X` tags, and those releases are
+  # only *drafts*. We still expect someone to go in and manually edit the title
+  # description to give the final product a more human touch.
+  #
+
+  # This is pretty insane, but unfortunately a side effect inherent to the
+  # design/misdesign of GitHub Actions:
+  #
+  # We want to publish a number of different build artifacts (one per
+  # architecture), but any use of the `actions/create-release` action cuts a
+  # brand new release instead of reusing an existing one. To work around the
+  # problem, we cut the release in this separate job. Unfortunately, because
+  # outputs cannot be shared across jobs, that prevents other jobs from
+  # accessing the upload URL, which is need to publish artifacts.
+  #
+  # The workaround is to put the upload URL in a file and publish that as an
+  # artifact. Other jobs then download it, export it to other steps, and
+  # publish artifacts independently.
+  release_create:
+    # TODO if: contains(github.ref, 'tags/v')
     runs-on: ubuntu-latest
-    timeout-minutes: 5
 
     steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v2
+    - name: "Create release"
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GitHubToken }}
+      with:
+        draft: true
+        release_name: test1 # ${{ github.ref }}
+        tag_name: test1 # ${{ github.ref }}
 
-      - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: "Save release URL to file"
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
 
-      - name: "Cache: Cargo index"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: "Upload release URL file"
+      uses: actions/upload-artifact@v1
+      with:
+        name: release_url
+        path: release_url.txt
 
-      - name: "Cache: Cargo build"
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          profile: minimal
-          toolchain: nightly
-
-      - name: "Cargo: Check"
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-      - name: "Cargo: Build"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-
-      - name: "Cargo: Test"
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  # TODO: Release steps don't yet publish artifacts. Do that.
-
-  release:
-    # if: github.ref == 'refs/heads/master'
+  release_linux:
+    # TODO if: contains(github.ref, 'tags/v')
     needs:
-      - build
-      - build-nightly
+      # TODO - build
+      # TODO - build_nightly
+      - release_create
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -168,6 +220,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           override: true
+          profile: minimal
           target: ${{ matrix.target }}
           toolchain: stable
 
@@ -178,16 +231,62 @@ jobs:
           args: --release --target=${{ matrix.target }}
           use-cross: true
 
+      - name: "Create release bundle"
+        run: |
+          main() {
+            local src=$(pwd)
+            local stage=$(mktemp -d)
+            echo $stage
+
+            local ref="${{ github.ref }}"
+            # local cleaned_ref=${ref//\//-}
+            # echo $cleaned_ref
+            ref="test1" # TODO
+
+            cp target/${{ matrix.target }}/release/libredis_cell.* $stage/
+            cd $stage
+            tar czf $src/$CRATE_NAME-$ref-${{ matrix.target }}.tar.gz *
+
+            cd $src
+            rm -rf $stage
+          }
+          main
+
+      - name: "Download release URL file"
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: "Extract release URL"
+        id: get_release_url
+        run: |
+          value=`cat release_url/release_url.txt`
+          echo ::set-output name=upload_url::$value
+        env:
+          TAG_REF_NAME: ${{ github.ref }}
+          REPOSITORY_NAME: ${{ github.repository }}
+
+      - name: "Upload release asset"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GitHubToken }}
+        with:
+          asset_content_type: application/zip
+          asset_name: ${{ env.CRATE_NAME }}-test1-${{ matrix.target }}.tar.gz # TODO: fixme
+          asset_path: ./${{ env.CRATE_NAME }}-test1-${{ matrix.target }}.tar.gz # TODO: fixme
+          upload_url: ${{ steps.get_release_url.outputs.upload_url }}
+
   # A separate release step for Mac OS. Technically this seems like something
   # that might fit into a build matrix, but in practice the architecture
   # targets for Mac OS versus Ubuntu are completing exclusive, so the exclude
   # list would be huge. Unfortunately this results in more copy + paste, but so
   # it is.
-  release-macos:
-    # if: github.ref == 'refs/heads/master'
+  release_macos:
+    # TODO if: contains(github.ref, 'tags/v')
     needs:
-      - build
-      - build-nightly
+      # TODO - build
+      # TODO - build_nightly
+      - release_create
     runs-on: macos-latest
     strategy:
       matrix:
@@ -231,3 +330,48 @@ jobs:
           command: build
           args: --release --target=${{ matrix.target }}
           use-cross: true
+
+      - name: "Create release bundle"
+        run: |
+          main() {
+            local src=$(pwd)
+            local stage=$(mktemp -d)
+            echo $stage
+
+            local ref="${{ github.ref }}"
+            # local cleaned_ref=${ref//\//-}
+            # echo $cleaned_ref
+            ref="test1" # TODO
+
+            cp target/${{ matrix.target }}/release/libredis_cell.* $stage/
+            cd $stage
+            tar czf $src/$CRATE_NAME-$ref-${{ matrix.target }}.tar.gz *
+
+            cd $src
+            rm -rf $stage
+          }
+          main
+
+      - name: "Download release URL file"
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: "Extract release URL"
+        id: get_release_url
+        run: |
+          value=`cat release_url/release_url.txt`
+          echo ::set-output name=upload_url::$value
+        env:
+          TAG_REF_NAME: ${{ github.ref }}
+          REPOSITORY_NAME: ${{ github.repository }}
+
+      - name: "Upload release asset"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GitHubToken }}
+        with:
+          asset_content_type: application/zip
+          asset_name: ${{ env.CRATE_NAME }}-test1-${{ matrix.target }}.tar.gz # TODO: fixme
+          asset_path: ./${{ env.CRATE_NAME }}-test1-${{ matrix.target }}.tar.gz # TODO: fixme
+          upload_url: ${{ steps.get_release_url.outputs.upload_url }}
