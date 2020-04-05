@@ -50,8 +50,8 @@ impl Rate {
 
 #[derive(Debug, PartialEq)]
 pub struct RateLimitResult {
-    pub limit:       i64,
-    pub remaining:   i64,
+    pub limit: i64,
+    pub remaining: i64,
     pub reset_after: time::Duration,
     pub retry_after: time::Duration,
 }
@@ -100,8 +100,8 @@ impl<T: store::Store> RateLimiter<T> {
         quantity: i64,
     ) -> Result<(bool, RateLimitResult), CellError> {
         let mut rlc = RateLimitResult {
-            limit:       self.limit,
-            remaining:   0,
+            limit: self.limit,
+            remaining: 0,
             retry_after: time::Duration::seconds(-1),
             reset_after: time::Duration::seconds(-1),
         };
@@ -270,13 +270,13 @@ impl<T: store::Store> RateLimiter<T> {
 #[derive(Debug, PartialEq)]
 pub struct RateQuota {
     pub max_burst: i64,
-    pub max_rate:  Rate,
+    pub max_rate: Rate,
 }
 
 fn from_nanoseconds(x: i64) -> time::Tm {
     let ns = (10 as i64).pow(9);
     time::at(time::Timespec {
-        sec:  x / ns,
+        sec: x / ns,
         nsec: (x % ns) as i32,
     })
 }
@@ -447,7 +447,7 @@ mod tests {
     fn it_does_not_support_zero_rates() {
         let quota = RateQuota {
             max_burst: 10,
-            max_rate:  Rate::per_period(0, time::Duration::seconds(0)),
+            max_rate: Rate::per_period(0, time::Duration::seconds(0)),
         };
         let mut memory_store = store::MemoryStore::new_verbose();
 
@@ -465,7 +465,7 @@ mod tests {
     fn it_handles_rate_limit_update_failures() {
         let quota = RateQuota {
             max_burst: 1,
-            max_rate:  Rate::per_second(1),
+            max_rate: Rate::per_second(1),
         };
         let mut memory_store = store::MemoryStore::new_verbose();
         let mut test_store = TestStore::new(&mut memory_store);
@@ -483,13 +483,13 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     struct RateLimitCase {
-        num:         i64,
-        now:         time::Tm,
-        volume:      i64,
-        remaining:   i64,
+        num: i64,
+        now: time::Tm,
+        volume: i64,
+        remaining: i64,
         reset_after: time::Duration,
         retry_after: time::Duration,
-        limited:     bool,
+        limited: bool,
     }
 
     impl RateLimitCase {
@@ -518,9 +518,9 @@ mod tests {
     /// us to tweak certain behavior, like for example setting the effective
     /// system clock.
     struct TestStore<'a> {
-        clock:        time::Tm,
+        clock: time::Tm,
         fail_updates: bool,
-        store:        &'a mut store::MemoryStore,
+        store: &'a mut store::MemoryStore,
     }
 
     impl<'a> TestStore<'a> {

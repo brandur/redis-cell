@@ -262,9 +262,9 @@ pub enum KeyMode {
 /// operation through the use of the Drop trait.
 #[derive(Debug)]
 pub struct RedisKey {
-    ctx:       *mut raw::RedisModuleCtx,
+    ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
-    key_str:   RedisString,
+    key_str: RedisString,
 }
 
 impl RedisKey {
@@ -304,7 +304,7 @@ impl Drop for RedisKey {
 /// `RedisKeyWritable` is an abstraction over a Redis key that allows read and
 /// write operations.
 pub struct RedisKeyWritable {
-    ctx:       *mut raw::RedisModuleCtx,
+    ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
 
     // The Redis string
@@ -382,7 +382,7 @@ impl Drop for RedisKeyWritable {
 /// fault-free operation through the use of the Drop trait.
 #[derive(Debug)]
 pub struct RedisString {
-    ctx:       *mut raw::RedisModuleCtx,
+    ctx: *mut raw::RedisModuleCtx,
     str_inner: *mut raw::RedisModuleString,
 }
 
