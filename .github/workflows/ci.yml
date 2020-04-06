@@ -163,8 +163,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GitHubToken }}
       with:
+        body: Edit this.
         draft: true
-        release_name: ${{ github.ref }}
+        release_name: "${{ github.ref }}: Edit this"
         tag_name: ${{ github.ref }}
 
     - name: "Save release URL to file"
