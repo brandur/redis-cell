@@ -1,8 +1,5 @@
 name: redis-cell CI
 
-env:
-  CRATE_NAME: redis-cell
-
 on:
   pull_request:
   push:
@@ -231,6 +228,22 @@ jobs:
           args: --release --target=${{ matrix.target }}
           use-cross: true
 
+      - name: "Download release URL file"
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: "Get release info"
+        id: get_release_info
+        run: |
+          echo ::set-output name=file_name::${REPOSITORY_NAME##*/}-${TAG_REF_NAME##*/v}-${{ matrix.target }}.tar.gz # RepositoryName-v1.0.0-arch.tar.gz
+
+          value=`cat release_url/release_url.txt`
+          echo ::set-output name=upload_url::$value
+        env:
+          REPOSITORY_NAME: ${{ github.repository }}
+          TAG_REF_NAME: ${{ github.ref }}
+
       - name: "Create release bundle"
         run: |
           main() {
@@ -240,26 +253,12 @@ jobs:
 
             cp target/${{ matrix.target }}/release/libredis_cell.* $stage/
             cd $stage
-            tar czf $src/$CRATE_NAME-${{ github.ref }}-${{ matrix.target }}.tar.gz *
+            tar czf $src/${{ steps.get_release_info.outputs.file_name }} *
 
             cd $src
             rm -rf $stage
           }
           main
-
-      - name: "Download release URL file"
-        uses: actions/download-artifact@v1
-        with:
-          name: release_url
-
-      - name: "Extract release URL"
-        id: get_release_url
-        run: |
-          value=`cat release_url/release_url.txt`
-          echo ::set-output name=upload_url::$value
-        env:
-          TAG_REF_NAME: ${{ github.ref }}
-          REPOSITORY_NAME: ${{ github.repository }}
 
       - name: "Upload release asset"
         uses: actions/upload-release-asset@v1
@@ -267,9 +266,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GitHubToken }}
         with:
           asset_content_type: application/zip
-          asset_name: ${{ env.CRATE_NAME }}-${{ github.ref }}-${{ matrix.target }}.tar.gz
-          asset_path: ./${{ env.CRATE_NAME }}-${{ github.ref }}-${{ matrix.target }}.tar.gz
-          upload_url: ${{ steps.get_release_url.outputs.upload_url }}
+          asset_name: ${{ steps.get_release_info.outputs.file_name }}
+          asset_path: ./${{ steps.get_release_info.outputs.file_name }}
+          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
 
   # A separate release step for Mac OS. Technically this seems like something
   # that might fit into a build matrix, but in practice the architecture
@@ -326,6 +325,22 @@ jobs:
           args: --release --target=${{ matrix.target }}
           use-cross: true
 
+      - name: "Download release URL file"
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: "Get release info"
+        id: get_release_info
+        run: |
+          echo ::set-output name=file_name::${REPOSITORY_NAME##*/}-${TAG_REF_NAME##*/v}-${{ matrix.target }}.tar.gz # RepositoryName-v1.0.0-arch.tar.gz
+
+          value=`cat release_url/release_url.txt`
+          echo ::set-output name=upload_url::$value
+        env:
+          REPOSITORY_NAME: ${{ github.repository }}
+          TAG_REF_NAME: ${{ github.ref }}
+
       - name: "Create release bundle"
         run: |
           main() {
@@ -335,26 +350,12 @@ jobs:
 
             cp target/${{ matrix.target }}/release/libredis_cell.* $stage/
             cd $stage
-            tar czf $src/$CRATE_NAME-${{ github.ref }}-${{ matrix.target }}.tar.gz *
+            tar czf $src/${{ steps.get_release_info.outputs.file_name }} *
 
             cd $src
             rm -rf $stage
           }
           main
-
-      - name: "Download release URL file"
-        uses: actions/download-artifact@v1
-        with:
-          name: release_url
-
-      - name: "Extract release URL"
-        id: get_release_url
-        run: |
-          value=`cat release_url/release_url.txt`
-          echo ::set-output name=upload_url::$value
-        env:
-          TAG_REF_NAME: ${{ github.ref }}
-          REPOSITORY_NAME: ${{ github.repository }}
 
       - name: "Upload release asset"
         uses: actions/upload-release-asset@v1
@@ -362,6 +363,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GitHubToken }}
         with:
           asset_content_type: application/zip
-          asset_name: ${{ env.CRATE_NAME }}-${{ github.ref }}-${{ matrix.target }}.tar.gz
-          asset_path: ./${{ env.CRATE_NAME }}-${{ github.ref }}-${{ matrix.target }}.tar.gz
-          upload_url: ${{ steps.get_release_url.outputs.upload_url }}
+          asset_name: ${{ steps.get_release_info.outputs.file_name }}
+          asset_path: ./${{ steps.get_release_info.outputs.file_name }}
+          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
