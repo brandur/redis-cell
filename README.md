@@ -149,6 +149,12 @@ Run the test suite:
 
     cargo test
 
+    # specific test
+    cargo test it_rates_limits
+
+    # with debug output on stdout
+    cargo test it_rates_limits -- --nocapture
+
 CI has checks for both [Rustfmt][rustfmt] and [Clippy][clippy] (Rust's linter).
 These can be installed and run locally using Rustup's component framework:
 
