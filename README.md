@@ -1,4 +1,4 @@
-# redis-cell [![Build Status](https://travis-ci.org/brandur/redis-cell.svg?branch=master)](https://travis-ci.org/brandur/redis-cell)
+# redis-cell [![Build Status](https://github.com/brandur/redis-cell/workflows/redis-cell%20CI/badge.svg)](https://github.com/brandur/redis-cell/actions)
 
 A Redis module that provides rate limiting in Redis as a single command.
 Implements the fairly sophisticated [generic cell rate algorithm][gcra] (GCRA)
