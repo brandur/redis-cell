@@ -171,9 +171,10 @@ To perform a release:
 3. Commit these changes with a message like `Bump to version 1.2.3`.
 4. Tag the release with `git tag v1.2.3` (make sure to include a leading `v`).
 5. `ggpush --tags`
-6. Edit the new release's title and body in [GitHub][releases]. Use the
-   contents for the new version from `CHANGELOG.md` as the release's body,
-   which allows Markdown content.
+6. Edit the new release's title and body in [GitHub][releases] (a human touch
+   is still expected for the final product). Use the contents for the new
+   version from `CHANGELOG.md` as the release's body, which allows Markdown
+   content.
 
 [benchmarks]: https://gist.github.com/brandur/90698498bd543598d00df46e32be3268
 [clippy]: https://github.com/rust-lang/rust-clippy
