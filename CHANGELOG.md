@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0 - 2021-03-05
+* [#53](https://github.com/brandur/redis-cell/pull/53) Replicate `CL.THROTTLE` invocations to replicas/AOF
+
 ## 0.2.5 - 2020-04-05
 * [#42](https://github.com/brandur/redis-cell/pull/42) Explicitly don't support zero rates
 
