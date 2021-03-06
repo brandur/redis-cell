@@ -28,6 +28,7 @@ pub enum ReplyType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
 pub enum Status {
     Ok = 0,
     Err = 1,
