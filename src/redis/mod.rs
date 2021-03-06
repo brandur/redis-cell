@@ -219,6 +219,16 @@ impl Redis {
         RedisKeyWritable::open(self.ctx, key)
     }
 
+    /// Tells Redis to replicate the command to replicas an AOF as is.
+    pub fn replicate_verbatim(&self) -> Result<(), CellError> {
+        // Handle a possible error for hygiene, but the documentation specifically
+        // states that the function always returns `REDISMODULE_OK`.
+        handle_status(
+            raw::replicate_verbatim(self.ctx),
+            "Could not replicate verbatim",
+        )
+    }
+
     /// Tells Redis that we're about to reply with an (Redis) array.
     ///
     /// Used by invoking once with the expected length and then calling any
