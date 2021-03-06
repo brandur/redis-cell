@@ -74,6 +74,10 @@ impl Command for ThrottleCommand {
         r.reply_integer(rate_limit_result.retry_after.num_seconds())?;
         r.reply_integer(rate_limit_result.reset_after.num_seconds())?;
 
+        // Tell Redis that it's okay to replicate the command with the same
+        // parameters out to replicas.
+        r.replicate_verbatim()?;
+
         Ok(())
     }
 
