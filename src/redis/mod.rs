@@ -84,6 +84,11 @@ pub struct Redis {
 }
 
 impl Redis {
+    /// Calls a Redis command with arguments.
+    ///
+    /// WARNING: This method is not currently in use by the library. I thought I would be invoking
+    /// manual calls originally, but ended up going on to use lower level Redis Module functions
+    /// instead like direct key manipulation.
     pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, CellError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
