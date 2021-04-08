@@ -3,8 +3,7 @@
 all: test fmt lint
 
 fmt:
-	cargo +nightly fmt -- --write-mode=diff
-
+	cargo +nightly fmt --
 lint:
 	cargo +nightly clippy -- -D warnings
 

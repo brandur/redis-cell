@@ -274,7 +274,7 @@ pub struct RateQuota {
 }
 
 fn from_nanoseconds(x: i64) -> time::Tm {
-    let ns = (10 as i64).pow(9);
+    let ns = 10_i64.pow(9);
     time::at(time::Timespec {
         sec: x / ns,
         nsec: (x % ns) as i32,
@@ -283,7 +283,7 @@ fn from_nanoseconds(x: i64) -> time::Tm {
 
 fn nanoseconds(x: time::Tm) -> i64 {
     let ts = x.to_timespec();
-    ts.sec * (10 as i64).pow(9) + i64::from(ts.nsec)
+    ts.sec * 10_i64.pow(9) + i64::from(ts.nsec)
 }
 
 #[cfg(test)]
