@@ -63,6 +63,16 @@ impl Command for ThrottleCommand {
 
         let (throttled, rate_limit_result) = limiter.rate_limit(key, quantity)?;
 
+        let mut retry_after = rate_limit_result.retry_after.num_seconds();
+        if rate_limit_result.retry_after.num_milliseconds() > 0 {
+            retry_after += 1
+        }
+
+        let mut reset_after = rate_limit_result.reset_after.num_seconds();
+        if rate_limit_result.reset_after.num_milliseconds() > 0 {
+            reset_after += 1
+        }
+
         // Reply with an array containing rate limiting results. Note that
         // Redis' support for interesting data types is quite weak, so we have
         // to jam a few square pegs into round holes. It's a little messy, but
@@ -71,8 +81,8 @@ impl Command for ThrottleCommand {
         r.reply_integer(if throttled { 1 } else { 0 })?;
         r.reply_integer(rate_limit_result.limit)?;
         r.reply_integer(rate_limit_result.remaining)?;
-        r.reply_integer(rate_limit_result.retry_after.num_seconds())?;
-        r.reply_integer(rate_limit_result.reset_after.num_seconds())?;
+        r.reply_integer(retry_after)?;
+        r.reply_integer(reset_after)?;
 
         // Tell Redis that it's okay to replicate the command with the same
         // parameters out to replicas.
