@@ -11,7 +11,6 @@ pub mod raw;
 
 use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
-use std::iter;
 use std::ptr;
 use std::string;
 use time;
@@ -67,10 +66,7 @@ impl dyn Command {
         match command.run(r, str_args.as_slice()) {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
-                raw::reply_with_error(
-                    ctx,
-                    format!("Cell error: {}\0", e.to_string()).as_ptr(),
-                );
+                raw::reply_with_error(ctx, format!("Cell error: {}\0", e).as_ptr());
                 raw::Status::Err
             }
         }
@@ -99,7 +95,7 @@ impl Redis {
         // It would be nice to start passing some parameters as their actual
         // type (for example, i64s as long longs), but Redis stringifies these
         // on the other end anyway so the practical benefit will be minimal.
-        let format: String = iter::repeat("s").take(args.len()).collect();
+        let format: String = "s".repeat(args.len());
 
         let terminated_args: Vec<RedisString> =
             args.iter().map(|s| self.create_string(s)).collect();
@@ -261,7 +257,7 @@ impl Redis {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeyMode {
     Read,
     ReadWrite,
@@ -275,22 +271,15 @@ pub enum KeyMode {
 /// by explicitly freeing them when you're done. This can be a risky prospect,
 /// especially with mechanics like Rust's `?` operator, so we ensure fault-free
 /// operation through the use of the Drop trait.
-#[derive(Debug)]
 pub struct RedisKey {
-    ctx: *mut raw::RedisModuleCtx,
     key_inner: *mut raw::RedisModuleKey,
-    key_str: RedisString,
 }
 
 impl RedisKey {
     fn open(ctx: *mut raw::RedisModuleCtx, key: &str) -> RedisKey {
         let key_str = RedisString::create(ctx, key);
         let key_inner = raw::open_key(ctx, key_str.str_inner, to_raw_mode(KeyMode::Read));
-        RedisKey {
-            ctx,
-            key_inner,
-            key_str,
-        }
+        RedisKey { key_inner }
     }
 
     /// Detects whether the key pointer given to us by Redis is null.
