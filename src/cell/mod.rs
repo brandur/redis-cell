@@ -8,7 +8,7 @@ use error::CellError;
 // operations before returning an error.
 const MAX_CAS_ATTEMPTS: i64 = 5;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Rate {
     pub period: time::Duration,
 }
@@ -48,7 +48,7 @@ impl Rate {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct RateLimitResult {
     pub limit: i64,
     pub remaining: i64,
@@ -267,7 +267,7 @@ impl<T: store::Store> RateLimiter<T> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct RateQuota {
     pub max_burst: i64,
     pub max_rate: Rate,
@@ -481,7 +481,7 @@ mod tests {
         );
     }
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, Eq, PartialEq)]
     struct RateLimitCase {
         num: i64,
         now: time::Tm,

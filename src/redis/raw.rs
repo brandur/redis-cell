@@ -17,7 +17,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ReplyType {
     Unknown = -1,
     String = 0,
@@ -27,7 +27,7 @@ pub enum ReplyType {
     Nil = 4,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum Status {
     Ok = 0,

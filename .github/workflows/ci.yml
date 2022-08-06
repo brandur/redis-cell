@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust:
-          - 1.38.0
+        rust_toolchain:
           - stable
+          - nightly
     timeout-minutes: 5
 
     steps:
@@ -50,7 +50,7 @@ jobs:
           components: clippy, rustfmt
           override: true
           profile: minimal
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust_toolchain }}
 
       - name: "Cargo: Check"
         uses: actions-rs/cargo@v1
@@ -78,58 +78,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  # Very, very similar to the `build` job above, but defined separately because
-  # individual components like Clippy and Rustfmt are often not available in
-  # nightly builds, and the build will fail if we try to add them. Therefore,
-  # this is the exact same thing minus the Clippy/Rustfmt checks.
-  build_nightly:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v2
-
-      - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: "Cache: Cargo index"
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: "Cache: Cargo build"
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          profile: minimal
-          toolchain: nightly
-
-      - name: "Cargo: Check"
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-      - name: "Cargo: Build"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-
-      - name: "Cargo: Test"
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
 
   #
   # RELEASE JOBS
@@ -181,7 +129,6 @@ jobs:
     if: contains(github.ref, 'tags/v')
     needs:
       - build
-      - build_nightly
       - release_create
     runs-on: ubuntu-latest
     strategy:
@@ -279,7 +226,6 @@ jobs:
     if: contains(github.ref, 'tags/v')
     needs:
       - build
-      - build_nightly
       - release_create
     runs-on: macos-latest
     strategy:
