@@ -1,5 +1,9 @@
 # redis-cell [![Build Status](https://github.com/brandur/redis-cell/workflows/redis-cell%20CI/badge.svg)](https://github.com/brandur/redis-cell/actions)
 
+**Warning:** This package is in "best effort" maintenance mode. I try to
+respond to opened issues and keep it reasonably up-to-date with respect to the
+underlying Rust toolchain, but am no longer actively developing it.
+
 A Redis module that provides rate limiting in Redis as a single command.
 Implements the fairly sophisticated [generic cell rate algorithm][gcra] (GCRA)
 which provides a rolling time window and doesn't depend on a background drip
