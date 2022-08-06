@@ -63,11 +63,13 @@ impl Command for ThrottleCommand {
 
         let (throttled, rate_limit_result) = limiter.rate_limit(key, quantity)?;
 
+        // If either time had a partial component, but it up to the next full
+        // second because otherwise a fast-paced caller could try again too
+        // early.
         let mut retry_after = rate_limit_result.retry_after.num_seconds();
         if rate_limit_result.retry_after.num_milliseconds() > 0 {
             retry_after += 1
         }
-
         let mut reset_after = rate_limit_result.reset_after.num_seconds();
         if rate_limit_result.reset_after.num_milliseconds() > 0 {
             reset_after += 1
