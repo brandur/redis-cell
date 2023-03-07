@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "redis-cell",
+  "redis-cell-impl",
 ]
 resolver = "2"
 

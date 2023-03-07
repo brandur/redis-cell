@@ -1,8 +1,11 @@
-extern crate time;
+#[macro_use]
+mod macros;
+mod error;
 
 pub mod store;
 
-use error::CellError;
+pub use crate::error::CellError;
+pub use crate::store::{MemoryStore, Store};
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
 // operations before returning an error.
@@ -288,9 +291,7 @@ fn nanoseconds(x: time::Tm) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate time;
-
-    use cell::*;
+    use super::*;
     use error::CellError;
 
     #[test]
