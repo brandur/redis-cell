@@ -1,3 +1,4 @@
+.*sw?
 *.bk
 redis.conf*
 target

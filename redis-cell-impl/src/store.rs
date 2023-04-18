@@ -1,5 +1,6 @@
 use crate::error::CellError;
 use std::collections::HashMap;
+use time::OffsetDateTime;
 
 /// Store exposes the atomic data store operations that the GCRA rate limiter
 /// needs to function correctly.
@@ -25,7 +26,7 @@ pub trait Store {
     /// store (this is done so that rate limiters running on a variety of
     /// different nodes can operate with a consistent clock instead of using
     /// their own). If the key was unset, -1 is returned.
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError>;
+    fn get_with_time(&self, key: &str) -> Result<(i64, OffsetDateTime), CellError>;
 
     /// Logs a debug message to the data store.
     fn log_debug(&self, message: &str);
@@ -54,7 +55,7 @@ impl<'a, T: Store> Store for &'a mut T {
         (**self).compare_and_swap_with_ttl(key, old, new, ttl)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+    fn get_with_time(&self, key: &str) -> Result<(i64, OffsetDateTime), CellError> {
         (**self).get_with_time(key)
     }
 
@@ -113,10 +114,10 @@ impl Store for MemoryStore {
         Ok(true)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+    fn get_with_time(&self, key: &str) -> Result<(i64, OffsetDateTime), CellError> {
         match self.map.get(key) {
-            Some(n) => Ok((*n, time::now_utc())),
-            None => Ok((-1, time::now_utc())),
+            Some(n) => Ok((*n, OffsetDateTime::now_utc())),
+            None => Ok((-1, OffsetDateTime::now_utc())),
         }
     }
 
@@ -151,20 +152,17 @@ mod tests {
         let mut store = MemoryStore::default();
 
         // First attempt obviously works.
-        let res1 =
-            store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::zero());
+        let res1 = store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::ZERO);
         assert_eq!(true, res1.unwrap());
 
         // Second attempt succeeds: we use the value we just set combined with
         // a new value.
-        let res2 =
-            store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::ZERO);
         assert_eq!(true, res2.unwrap());
 
         // Third attempt fails: we try to overwrite using a value that is
         // incorrect.
-        let res2 =
-            store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::ZERO);
         assert_eq!(false, res2.unwrap());
     }
 
@@ -177,7 +175,7 @@ mod tests {
 
         // Now try setting a value.
         let _ = store
-            .set_if_not_exists_with_ttl("foo", 123, time::Duration::zero())
+            .set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO)
             .unwrap();
 
         let res2 = store.get_with_time("foo");
@@ -188,10 +186,10 @@ mod tests {
     fn it_performs_set_if_not_exists_with_ttl() {
         let mut store = MemoryStore::default();
 
-        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO);
         assert_eq!(true, res1.unwrap());
 
-        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO);
         assert_eq!(false, res2.unwrap());
     }
 }

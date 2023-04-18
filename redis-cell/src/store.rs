@@ -1,4 +1,5 @@
 use crate::redis;
+use redis_cell_impl::time::{Duration, OffsetDateTime};
 use redis_cell_impl::{CellError, Store};
 
 /// `InternalRedisStore` is a store implementation that uses Redis module APIs
@@ -21,7 +22,7 @@ impl<'a> Store for InternalRedisStore<'a> {
         key: &str,
         old: i64,
         new: i64,
-        ttl: time::Duration,
+        ttl: Duration,
     ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
         match key.read()? {
@@ -47,16 +48,16 @@ impl<'a> Store for InternalRedisStore<'a> {
         }
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+    fn get_with_time(&self, key: &str) -> Result<(i64, OffsetDateTime), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
         let key = self.r.open_key(key);
         match key.read()? {
             Some(s) => {
                 let n = s.parse::<i64>()?;
-                Ok((n, time::now_utc()))
+                Ok((n, OffsetDateTime::now_utc()))
             }
-            None => Ok((-1, time::now_utc())),
+            None => Ok((-1, OffsetDateTime::now_utc())),
         }
     }
 
@@ -68,7 +69,7 @@ impl<'a> Store for InternalRedisStore<'a> {
         &mut self,
         key: &str,
         value: i64,
-        ttl: time::Duration,
+        ttl: Duration,
     ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
         let res = if key.is_empty()? {

@@ -10,6 +10,7 @@
 pub mod raw;
 
 use libc::{c_int, c_long, c_longlong, size_t};
+use redis_cell_impl::time::Duration;
 use redis_cell_impl::CellError;
 use std::ptr;
 use std::string;
@@ -355,8 +356,8 @@ impl RedisKeyWritable {
         Ok(Some(read_key(self.key_inner)?))
     }
 
-    pub fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
-        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+    pub fn set_expire(&self, expire: Duration) -> Result<(), CellError> {
+        match raw::set_expire(self.key_inner, expire.whole_milliseconds() as i64) {
             raw::Status::Ok => Ok(()),
 
             // Error may occur if the key wasn't open for writing or is an
