@@ -1,20 +1,14 @@
 #[macro_use]
-extern crate bitflags;
-extern crate libc;
-extern crate time;
-
-#[macro_use]
 mod macros;
 
-pub mod cell;
-pub mod error;
 mod redis;
+mod store;
 
-use cell::store;
-use error::CellError;
 use libc::c_int;
 use redis::raw;
 use redis::Command;
+use redis_cell_impl::time::Duration;
+use redis_cell_impl::{CellError, Rate, RateLimiter, RateQuota};
 
 const MODULE_NAME: &str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
@@ -52,10 +46,10 @@ impl Command for ThrottleCommand {
         // is run, but these structures don't have a huge overhead to them so
         // it's not that big of a problem.
         let mut store = store::InternalRedisStore::new(&r);
-        let rate = cell::Rate::per_period(count, time::Duration::seconds(period));
-        let mut limiter = cell::RateLimiter::new(
+        let rate = Rate::per_period(count, Duration::seconds(period));
+        let mut limiter = RateLimiter::new(
             &mut store,
-            &cell::RateQuota {
+            &RateQuota {
                 max_burst,
                 max_rate: rate,
             },
@@ -66,12 +60,12 @@ impl Command for ThrottleCommand {
         // If either time had a partial component, but it up to the next full
         // second because otherwise a fast-paced caller could try again too
         // early.
-        let mut retry_after = rate_limit_result.retry_after.num_seconds();
-        if rate_limit_result.retry_after.num_milliseconds() > 0 {
+        let mut retry_after = rate_limit_result.retry_after.whole_seconds();
+        if rate_limit_result.retry_after.subsec_milliseconds() > 0 {
             retry_after += 1
         }
-        let mut reset_after = rate_limit_result.reset_after.num_seconds();
-        if rate_limit_result.reset_after.num_milliseconds() > 0 {
+        let mut reset_after = rate_limit_result.reset_after.whole_seconds();
+        if rate_limit_result.reset_after.subsec_milliseconds() > 0 {
             reset_after += 1
         }
 
@@ -122,7 +116,7 @@ pub extern "C" fn RedisModule_OnLoad(
 ) -> raw::Status {
     if raw::init(
         ctx,
-        format!("{}\0", MODULE_NAME).as_ptr(),
+        format!("{MODULE_NAME}\0").as_ptr(),
         MODULE_VERSION,
         raw::REDISMODULE_APIVER_1,
     ) == raw::Status::Err

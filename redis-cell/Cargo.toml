@@ -1,0 +1,20 @@
+[package]
+name = "redis-cell"
+version = "0.3.0"
+authors = ["Brandur <brandur@mutelight.org>"]
+build = "build.rs"
+description = "A Redis module that provides rate limiting in Redis as a single command."
+license = "MIT"
+repository = "https://github.com/brandur/redis-cell"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+bitflags = "1.3"
+libc = "0.2.0"
+redis-cell-impl = {path="../redis-cell-impl", version="0.1"}
+
+[build-dependencies]
+cc = "1.0.79"

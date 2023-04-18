@@ -9,14 +9,15 @@
 )]
 pub mod raw;
 
-use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
+use redis_cell_impl::time::Duration;
+use redis_cell_impl::CellError;
 use std::ptr;
 use std::string;
-use time;
 
 /// `LogLevel` is a level of logging to be specified with a Redis log directive.
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub enum LogLevel {
     Debug,
     Notice,
@@ -27,6 +28,7 @@ pub enum LogLevel {
 /// Reply represents the various types of a replies that we can receive after
 /// executing a Redis command.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Reply {
     Array,
     Error,
@@ -66,7 +68,7 @@ impl dyn Command {
         match command.run(r, str_args.as_slice()) {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
-                raw::reply_with_error(ctx, format!("Cell error: {}\0", e).as_ptr());
+                raw::reply_with_error(ctx, format!("Cell error: {e}\0").as_ptr());
                 raw::Status::Err
             }
         }
@@ -85,6 +87,7 @@ impl Redis {
     /// WARNING: This method is not currently in use by the library. I thought I would be invoking
     /// manual calls originally, but ended up going on to use lower level Redis Module functions
     /// instead like direct key manipulation.
+    #[allow(dead_code)]
     pub fn call(&self, command: &str, args: &[&str]) -> Result<Reply, CellError> {
         log_debug!(self, "{} [began] args = {:?}", command, args);
 
@@ -115,22 +118,22 @@ impl Redis {
                 // it's left unchanged.
                 raw::call1::call(
                     self.ctx,
-                    format!("{}\0", command).as_ptr(),
-                    format!("{}\0", format).as_ptr(),
+                    format!("{command}\0").as_ptr(),
+                    format!("{format}\0").as_ptr(),
                     terminated_args[0].str_inner,
                 )
             }
             2 => raw::call2::call(
                 self.ctx,
-                format!("{}\0", command).as_ptr(),
-                format!("{}\0", format).as_ptr(),
+                format!("{command}\0").as_ptr(),
+                format!("{format}\0").as_ptr(),
                 terminated_args[0].str_inner,
                 terminated_args[1].str_inner,
             ),
             3 => raw::call3::call(
                 self.ctx,
-                format!("{}\0", command).as_ptr(),
-                format!("{}\0", format).as_ptr(),
+                format!("{command}\0").as_ptr(),
+                format!("{format}\0").as_ptr(),
                 terminated_args[0].str_inner,
                 terminated_args[1].str_inner,
                 terminated_args[2].str_inner,
@@ -177,6 +180,7 @@ impl Redis {
     /// This method coerces a Redis string that looks like an integer into an
     /// integer response. All other types of replies are passed through
     /// unmodified.
+    #[allow(dead_code)]
     pub fn coerce_integer(
         &self,
         reply_res: Result<Reply, CellError>,
@@ -197,8 +201,8 @@ impl Redis {
     pub fn log(&self, level: LogLevel, message: &str) {
         raw::log(
             self.ctx,
-            format!("{:?}\0", level).to_lowercase().as_ptr(),
-            format!("{}\0", message).as_ptr(),
+            format!("{level:?}\0").to_lowercase().as_ptr(),
+            format!("{message}\0").as_ptr(),
         );
     }
 
@@ -248,6 +252,7 @@ impl Redis {
         )
     }
 
+    #[allow(dead_code)]
     pub fn reply_string(&self, message: &str) -> Result<(), CellError> {
         let redis_str = self.create_string(message);
         handle_status(
@@ -351,8 +356,8 @@ impl RedisKeyWritable {
         Ok(Some(read_key(self.key_inner)?))
     }
 
-    pub fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
-        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+    pub fn set_expire(&self, expire: Duration) -> Result<(), CellError> {
+        match raw::set_expire(self.key_inner, expire.whole_milliseconds() as i64) {
             raw::Status::Ok => Ok(()),
 
             // Error may occur if the key wasn't open for writing or is an
@@ -392,7 +397,7 @@ pub struct RedisString {
 
 impl RedisString {
     fn create(ctx: *mut raw::RedisModuleCtx, s: &str) -> RedisString {
-        let str_inner = raw::create_string(ctx, format!("{}\0", s).as_ptr(), s.len());
+        let str_inner = raw::create_string(ctx, format!("{s}\0").as_ptr(), s.len());
         RedisString { ctx, str_inner }
     }
 }
@@ -411,6 +416,7 @@ fn handle_status(status: raw::Status, message: &str) -> Result<(), CellError> {
     }
 }
 
+#[allow(dead_code)]
 fn manifest_redis_reply(
     reply: *mut raw::RedisModuleCallReply,
 ) -> Result<Reply, CellError> {
@@ -458,7 +464,7 @@ fn from_byte_string(
     byte_str: *const u8,
     length: size_t,
 ) -> Result<String, string::FromUtf8Error> {
-    let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
+    let mut vec_str: Vec<u8> = Vec::with_capacity(length as _);
     for offset in 0..length {
         let byte: u8 = unsafe { *byte_str.add(offset) };
         vec_str.insert(offset, byte);

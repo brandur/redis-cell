@@ -1,4 +1,3 @@
-use std;
 use std::error;
 use std::fmt;
 
@@ -32,9 +31,9 @@ impl fmt::Display for CellError {
         match *self {
             // All underlying errors already impl `Display`, so we defer to
             // their implementations.
-            CellError::Generic(ref err) => write!(f, "{}", err),
-            CellError::FromUtf8(ref err) => write!(f, "{}", err),
-            CellError::ParseInt(ref err) => write!(f, "{}", err),
+            CellError::Generic(ref err) => write!(f, "{err}"),
+            CellError::FromUtf8(ref err) => write!(f, "{err}"),
+            CellError::ParseInt(ref err) => write!(f, "{err}"),
         }
     }
 }
