@@ -23,22 +23,22 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo index"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo build"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -139,22 +139,22 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo index"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo build"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -175,7 +175,7 @@ jobs:
           use-cross: true
 
       - name: "Download release URL file"
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: release_url
 
@@ -235,22 +235,22 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: "Cache: Cargo registry"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo index"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: "Cache: Cargo build"
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -271,7 +271,7 @@ jobs:
           use-cross: true
 
       - name: "Download release URL file"
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: release_url
 
