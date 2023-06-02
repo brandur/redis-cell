@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.1 - 2023-06-02
+* [#66](https://github.com/brandur/redis-cell/pull/66) Publish to ARM64 for Linux
+
 ## 0.3.0 - 2021-03-05
 * [#53](https://github.com/brandur/redis-cell/pull/53) Replicate `CL.THROTTLE` invocations to replicas/AOF
 
