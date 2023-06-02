@@ -8,7 +8,6 @@ on:
     - cron: "0 0 * * 0"
 
 jobs:
-
   #
   # BUILD JOBS
   #
@@ -23,7 +22,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v2
 
       - name: "Cache: Cargo registry"
@@ -105,25 +104,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: "Create release"
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GitHubToken }}
-      with:
-        body: Edit this.
-        draft: true
-        release_name: "${{ github.ref }}: Edit this"
-        tag_name: ${{ github.ref }}
+      - name: "Create release"
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: true
+          release_name: "Release ${{ github.ref }}"
+          tag_name: ${{ github.ref }}
 
-    - name: "Save release URL to file"
-      run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+      - name: "Save release URL to file"
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
 
-    - name: "Upload release URL file"
-      uses: actions/upload-artifact@v1
-      with:
-        name: release_url
-        path: release_url.txt
+      - name: "Upload release URL file"
+        uses: actions/upload-artifact@v1
+        with:
+          name: release_url
+          path: release_url.txt
 
   release_linux:
     if: contains(github.ref, 'tags/v')
@@ -140,7 +138,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v2
 
       - name: "Cache: Cargo registry"
@@ -236,7 +234,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v2
 
       - name: "Cache: Cargo registry"
