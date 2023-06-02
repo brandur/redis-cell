@@ -111,7 +111,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          release_name: "Release ${{ github.ref }}"
+          release_name: "${{ github.ref }}"
           tag_name: ${{ github.ref }}
 
       - name: "Save release URL to file"
