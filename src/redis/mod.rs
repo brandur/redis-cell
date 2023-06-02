@@ -458,7 +458,7 @@ fn from_byte_string(
     byte_str: *const u8,
     length: size_t,
 ) -> Result<String, string::FromUtf8Error> {
-    let mut vec_str: Vec<u8> = Vec::with_capacity(length as usize);
+    let mut vec_str: Vec<u8> = Vec::with_capacity(length);
     for offset in 0..length {
         let byte: u8 = unsafe { *byte_str.add(offset) };
         vec_str.insert(offset, byte);
