@@ -4,7 +4,7 @@
 // We have to disable a couple Clippy checks here because we'll otherwise have
 // warnings thrown from within macros provided by the `bigflags` package.
 #[cfg_attr(
-    feature = "cargo-clippy",
+    feature = "clippy",
     allow(clippy::redundant_field_names, clippy::suspicious_arithmetic_impl)
 )]
 pub mod raw;
@@ -13,7 +13,6 @@ use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::ptr;
 use std::string;
-use time;
 
 /// `LogLevel` is a level of logging to be specified with a Redis log directive.
 #[derive(Clone, Copy, Debug)]
