@@ -1,12 +1,5 @@
 // `raw` should not be public in the long run. Build an abstraction interface
 // instead.
-//
-// We have to disable a couple Clippy checks here because we'll otherwise have
-// warnings thrown from within macros provided by the `bigflags` package.
-#[cfg_attr(
-    feature = "clippy",
-    allow(clippy::redundant_field_names, clippy::suspicious_arithmetic_impl)
-)]
 pub mod raw;
 
 use error::CellError;
