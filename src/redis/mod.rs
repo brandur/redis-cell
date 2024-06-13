@@ -4,6 +4,7 @@ pub mod raw;
 
 use error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
+use std::convert::TryInto;
 use std::ptr;
 use std::string;
 
@@ -344,7 +345,10 @@ impl RedisKeyWritable {
     }
 
     pub fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
-        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+        match raw::set_expire(
+            self.key_inner,
+            expire.whole_milliseconds().try_into().unwrap(),
+        ) {
             raw::Status::Ok => Ok(()),
 
             // Error may occur if the key wasn't open for writing or is an

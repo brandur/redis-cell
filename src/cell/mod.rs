@@ -2,6 +2,9 @@ extern crate time;
 
 pub mod store;
 
+use std::convert::TryInto;
+use time::{format_description::well_known, OffsetDateTime};
+
 use error::CellError;
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
@@ -30,7 +33,7 @@ impl Rate {
     /// we wanted to have 10 actions every 2 seconds, the period produced would
     /// be 200 ms.
     pub fn per_period(n: i64, period: time::Duration) -> Rate {
-        let ns: i64 = period.num_nanoseconds().unwrap();
+        let ns: i128 = period.whole_nanoseconds();
 
         // Don't rely on floating point math to get here.
         if n == 0 || ns == 0 {
@@ -76,7 +79,10 @@ impl<T: store::Store> RateLimiter<T> {
     pub fn new(store: T, quota: &RateQuota) -> Self {
         RateLimiter {
             delay_variation_tolerance: time::Duration::nanoseconds(
-                quota.max_rate.period.num_nanoseconds().unwrap() * (quota.max_burst + 1),
+                (quota.max_rate.period.whole_nanoseconds()
+                    * (quota.max_burst as i128 + 1))
+                    .try_into()
+                    .unwrap(),
             ),
             emission_interval: quota.max_rate.period,
             limit: quota.max_burst + 1,
@@ -110,9 +116,7 @@ impl<T: store::Store> RateLimiter<T> {
             return Err(error!("Zero rates are not supported"));
         }
 
-        let increment = time::Duration::nanoseconds(
-            self.emission_interval.num_nanoseconds().unwrap() * quantity,
-        );
+        let increment = self.emission_interval * quantity as f64;
         self.log_start(key, quantity, increment);
 
         // Rust actually detects that this variable can only ever be assigned
@@ -140,12 +144,12 @@ impl<T: store::Store> RateLimiter<T> {
 
             let tat = match tat_val {
                 -1 => now,
-                _ => from_nanoseconds(tat_val),
+                _ => OffsetDateTime::from_unix_timestamp_nanos(tat_val).unwrap(),
             };
             log_debug!(
                 self.store,
                 "tat = {} (from store = {})",
-                tat.rfc3339(),
+                tat.format(&well_known::Rfc3339).unwrap(),
                 tat_val
             );
 
@@ -154,7 +158,11 @@ impl<T: store::Store> RateLimiter<T> {
             } else {
                 tat + increment
             };
-            log_debug!(self.store, "new_tat = {}", new_tat.rfc3339());
+            log_debug!(
+                self.store,
+                "new_tat = {}",
+                new_tat.format(&well_known::Rfc3339).unwrap()
+            );
 
             // Block the request if the next permitted time is in the future.
             let allow_at = new_tat - self.delay_variation_tolerance;
@@ -162,14 +170,14 @@ impl<T: store::Store> RateLimiter<T> {
             log_debug!(
                 self.store,
                 "diff = {}ms (now - allow_at)",
-                diff.num_milliseconds()
+                diff.whole_milliseconds()
             );
 
-            if diff < time::Duration::zero() {
+            if diff < time::Duration::ZERO {
                 log_debug!(
                     self.store,
                     "BLOCKED retry_after = {}ms",
-                    -diff.num_milliseconds()
+                    -diff.whole_milliseconds()
                 );
 
                 if increment <= self.delay_variation_tolerance {
@@ -181,7 +189,7 @@ impl<T: store::Store> RateLimiter<T> {
                 break;
             }
 
-            let new_tat_ns = nanoseconds(new_tat);
+            let new_tat_ns = new_tat.unix_timestamp_nanos();
             ttl = new_tat - now;
             log_debug!(self.store, "ALLOWED");
 
@@ -215,8 +223,8 @@ impl<T: store::Store> RateLimiter<T> {
 
         let next = self.delay_variation_tolerance - ttl;
         if next > -self.emission_interval {
-            rlc.remaining = (next.num_microseconds().unwrap() as f64
-                / self.emission_interval.num_microseconds().unwrap() as f64)
+            rlc.remaining = (next.whole_microseconds() as f64
+                / self.emission_interval.whole_microseconds() as f64)
                 as i64;
         }
         rlc.reset_after = ttl;
@@ -235,12 +243,12 @@ impl<T: store::Store> RateLimiter<T> {
         log_debug!(
             self.store,
             "retry_after = {}ms",
-            rlc.retry_after.num_milliseconds()
+            rlc.retry_after.whole_milliseconds()
         );
         log_debug!(
             self.store,
             "reset_after = {}ms (ttl)",
-            rlc.reset_after.num_milliseconds()
+            rlc.reset_after.whole_milliseconds()
         );
     }
 
@@ -252,17 +260,17 @@ impl<T: store::Store> RateLimiter<T> {
         log_debug!(
             self.store,
             "delay_variation_tolerance = {}ms",
-            self.delay_variation_tolerance.num_milliseconds()
+            self.delay_variation_tolerance.whole_milliseconds()
         );
         log_debug!(
             self.store,
             "emission_interval = {}ms",
-            self.emission_interval.num_milliseconds()
+            self.emission_interval.whole_milliseconds()
         );
         log_debug!(
             self.store,
             "tat_increment = {}ms (emission_interval * quantity)",
-            increment.num_milliseconds()
+            increment.whole_milliseconds()
         );
     }
 }
@@ -271,19 +279,6 @@ impl<T: store::Store> RateLimiter<T> {
 pub struct RateQuota {
     pub max_burst: i64,
     pub max_rate: Rate,
-}
-
-fn from_nanoseconds(x: i64) -> time::Tm {
-    let ns = 10_i64.pow(9);
-    time::at(time::Timespec {
-        sec: x / ns,
-        nsec: (x % ns) as i32,
-    })
-}
-
-fn nanoseconds(x: time::Tm) -> i64 {
-    let ts = x.to_timespec();
-    ts.sec * 10_i64.pow(9) + i64::from(ts.nsec)
 }
 
 #[cfg(test)]
@@ -372,7 +367,7 @@ mod tests {
             max_burst: limit - 1,
             max_rate: Rate::per_second(1),
         };
-        let start = time::now_utc();
+        let start = OffsetDateTime::now_utc();
         let mut memory_store = store::MemoryStore::new_verbose();
         let mut test_store = TestStore::new(&mut memory_store);
         let mut limiter = RateLimiter::new(&mut test_store, &quota);
@@ -383,7 +378,7 @@ mod tests {
             //
 
             // You can never make a request larger than the maximum.
-            RateLimitCase::new(0, start, 6, 5, time::Duration::zero(),
+            RateLimitCase::new(0, start, 6, 5, time::Duration::ZERO,
                 time::Duration::seconds(-1), true),
 
             // Rate limit normal requests appropriately.
@@ -484,7 +479,7 @@ mod tests {
     #[derive(Debug, Eq, PartialEq)]
     struct RateLimitCase {
         num: i64,
-        now: time::Tm,
+        now: time::OffsetDateTime,
         volume: i64,
         remaining: i64,
         reset_after: time::Duration,
@@ -495,7 +490,7 @@ mod tests {
     impl RateLimitCase {
         fn new(
             num: i64,
-            now: time::Tm,
+            now: time::OffsetDateTime,
             volume: i64,
             remaining: i64,
             reset_after: time::Duration,
@@ -518,7 +513,7 @@ mod tests {
     /// us to tweak certain behavior, like for example setting the effective
     /// system clock.
     struct TestStore<'a> {
-        clock: time::Tm,
+        clock: time::OffsetDateTime,
         fail_updates: bool,
         store: &'a mut store::MemoryStore,
     }
@@ -526,7 +521,7 @@ mod tests {
     impl<'a> TestStore<'a> {
         fn new(store: &'a mut store::MemoryStore) -> TestStore {
             TestStore {
-                clock: time::empty_tm(),
+                clock: OffsetDateTime::UNIX_EPOCH,
                 fail_updates: false,
                 store,
             }
@@ -537,8 +532,8 @@ mod tests {
         fn compare_and_swap_with_ttl(
             &mut self,
             key: &str,
-            old: i64,
-            new: i64,
+            old: i128,
+            new: i128,
             ttl: time::Duration,
         ) -> Result<bool, CellError> {
             if self.fail_updates {
@@ -548,7 +543,10 @@ mod tests {
             }
         }
 
-        fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+        fn get_with_time(
+            &self,
+            key: &str,
+        ) -> Result<(i128, time::OffsetDateTime), CellError> {
             let tup = self.store.get_with_time(key)?;
             Ok((tup.0, self.clock))
         }
@@ -560,7 +558,7 @@ mod tests {
         fn set_if_not_exists_with_ttl(
             &mut self,
             key: &str,
-            value: i64,
+            value: i128,
             ttl: time::Duration,
         ) -> Result<bool, CellError> {
             if self.fail_updates {
