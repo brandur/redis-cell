@@ -135,7 +135,7 @@ jobs:
           - aarch64-unknown-linux-gnu
           - armv7-unknown-linux-gnueabihf
           - x86_64-unknown-linux-gnu
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: "Checkout"
@@ -231,7 +231,7 @@ jobs:
       matrix:
         target:
           - x86_64-apple-darwin
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: "Checkout"
