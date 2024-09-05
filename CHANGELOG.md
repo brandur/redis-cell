@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 - 2024-09-05
+* [#76](https://github.com/brandur/redis-cell/pull/76) Upgrade dependencies
+* [#77](https://github.com/brandur/redis-cell/pull/77) Include `Cargo.lock`
+
 ## 0.3.1 - 2023-06-02
 * [#66](https://github.com/brandur/redis-cell/pull/66) Publish to ARM64 for Linux
 
