@@ -344,7 +344,7 @@ impl RedisKeyWritable {
     }
 
     pub fn set_expire(&self, expire: time::Duration) -> Result<(), CellError> {
-        match raw::set_expire(self.key_inner, expire.num_milliseconds()) {
+        match raw::set_expire(self.key_inner, expire.whole_milliseconds() as i64) {
             raw::Status::Ok => Ok(()),
 
             // Error may occur if the key wasn't open for writing or is an
