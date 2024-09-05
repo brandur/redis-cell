@@ -19,8 +19,8 @@ pub trait Store {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
-        old: i64,
-        new: i64,
+        old: u64,
+        new: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError>;
 
@@ -28,7 +28,10 @@ pub trait Store {
     /// store (this is done so that rate limiters running on a variety of
     /// different nodes can operate with a consistent clock instead of using
     /// their own). If the key was unset, -1 is returned.
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError>;
+    fn get_with_time(
+        &self,
+        key: &str,
+    ) -> Result<(Option<u64>, time::OffsetDateTime), CellError>;
 
     /// Logs a debug message to the data store.
     fn log_debug(&self, message: &str);
@@ -38,7 +41,7 @@ pub trait Store {
     fn set_if_not_exists_with_ttl(
         &mut self,
         key: &str,
-        value: i64,
+        value: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError>;
 }
@@ -50,14 +53,17 @@ impl<'a, T: Store> Store for &'a mut T {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
-        old: i64,
-        new: i64,
+        old: u64,
+        new: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError> {
         (**self).compare_and_swap_with_ttl(key, old, new, ttl)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+    fn get_with_time(
+        &self,
+        key: &str,
+    ) -> Result<(Option<u64>, time::OffsetDateTime), CellError> {
         (**self).get_with_time(key)
     }
 
@@ -68,7 +74,7 @@ impl<'a, T: Store> Store for &'a mut T {
     fn set_if_not_exists_with_ttl(
         &mut self,
         key: &str,
-        value: i64,
+        value: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError> {
         (**self).set_if_not_exists_with_ttl(key, value, ttl)
@@ -82,7 +88,7 @@ impl<'a, T: Store> Store for &'a mut T {
 /// mutex added if it's ever used for anything serious.
 #[derive(Default)]
 pub struct MemoryStore {
-    map: HashMap<String, i64>,
+    map: HashMap<String, u64>,
     verbose: bool,
 }
 
@@ -103,8 +109,8 @@ impl Store for MemoryStore {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
-        old: i64,
-        new: i64,
+        old: u64,
+        new: u64,
         _: time::Duration,
     ) -> Result<bool, CellError> {
         match self.map.get(key) {
@@ -116,11 +122,11 @@ impl Store for MemoryStore {
         Ok(true)
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
-        match self.map.get(key) {
-            Some(n) => Ok((*n, time::now_utc())),
-            None => Ok((-1, time::now_utc())),
-        }
+    fn get_with_time(
+        &self,
+        key: &str,
+    ) -> Result<(Option<u64>, time::OffsetDateTime), CellError> {
+        Ok((self.map.get(key).copied(), time::OffsetDateTime::now_utc()))
     }
 
     fn log_debug(&self, message: &str) {
@@ -132,7 +138,7 @@ impl Store for MemoryStore {
     fn set_if_not_exists_with_ttl(
         &mut self,
         key: &str,
-        value: i64,
+        value: u64,
         _: time::Duration,
     ) -> Result<bool, CellError> {
         match self.map.get(key) {
@@ -145,10 +151,11 @@ impl Store for MemoryStore {
     }
 }
 
-/// `InternalRedisStore` is a store implementation that uses Redis module APIs
-/// in that it's designed to run from within a Redis runtime. This allows us to
-/// cut some corners around atomicity because we can safety assume that all
-/// operations will be atomic.
+/// `InternalRedisStore` is a store implementation for Redis.
+///
+/// It uses Redis' modules APIs in that it's designed to run from within a Redis
+/// runtime. This allows us to cut some corners around atomicity because we can
+/// safety assume that all operations will be atomic.
 pub struct InternalRedisStore<'a> {
     r: &'a redis::Redis,
 }
@@ -163,8 +170,8 @@ impl<'a> Store for InternalRedisStore<'a> {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
-        old: i64,
-        new: i64,
+        old: u64,
+        new: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
@@ -174,7 +181,7 @@ impl<'a> Store for InternalRedisStore<'a> {
                 // in the case of a very fast rate the key's already been
                 // expired even since the beginning of this operation.
                 // Check whether the value is empty to handle that possibility.
-                if !s.is_empty() && s.parse::<i64>()? == old {
+                if !s.is_empty() && s.parse::<u64>()? == old {
                     // Still the old value: perform the swap.
                     key.write(new.to_string().as_str())?;
                     key.set_expire(ttl)?;
@@ -191,17 +198,17 @@ impl<'a> Store for InternalRedisStore<'a> {
         }
     }
 
-    fn get_with_time(&self, key: &str) -> Result<(i64, time::Tm), CellError> {
+    fn get_with_time(
+        &self,
+        key: &str,
+    ) -> Result<(Option<u64>, time::OffsetDateTime), CellError> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
         let key = self.r.open_key(key);
-        match key.read()? {
-            Some(s) => {
-                let n = s.parse::<i64>()?;
-                Ok((n, time::now_utc()))
-            }
-            None => Ok((-1, time::now_utc())),
-        }
+        Ok((
+            key.read()?.map(|s| s.parse::<u64>().unwrap()),
+            time::OffsetDateTime::now_utc(),
+        ))
     }
 
     fn log_debug(&self, message: &str) {
@@ -211,7 +218,7 @@ impl<'a> Store for InternalRedisStore<'a> {
     fn set_if_not_exists_with_ttl(
         &mut self,
         key: &str,
-        value: i64,
+        value: u64,
         ttl: time::Duration,
     ) -> Result<bool, CellError> {
         let key = self.r.open_key_writable(key);
@@ -237,20 +244,17 @@ mod tests {
         let mut store = MemoryStore::default();
 
         // First attempt obviously works.
-        let res1 =
-            store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::zero());
+        let res1 = store.compare_and_swap_with_ttl("foo", 123, 124, time::Duration::ZERO);
         assert_eq!(true, res1.unwrap());
 
         // Second attempt succeeds: we use the value we just set combined with
         // a new value.
-        let res2 =
-            store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo", 124, 125, time::Duration::ZERO);
         assert_eq!(true, res2.unwrap());
 
         // Third attempt fails: we try to overwrite using a value that is
         // incorrect.
-        let res2 =
-            store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::zero());
+        let res2 = store.compare_and_swap_with_ttl("foo", 123, 126, time::Duration::ZERO);
         assert_eq!(false, res2.unwrap());
     }
 
@@ -259,25 +263,25 @@ mod tests {
         let mut store = MemoryStore::default();
 
         let res1 = store.get_with_time("foo");
-        assert_eq!(-1, res1.unwrap().0);
+        assert!(res1.unwrap().0.is_none());
 
         // Now try setting a value.
         let _ = store
-            .set_if_not_exists_with_ttl("foo", 123, time::Duration::zero())
+            .set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO)
             .unwrap();
 
         let res2 = store.get_with_time("foo");
-        assert_eq!(123, res2.unwrap().0);
+        assert_eq!(Some(123), res2.unwrap().0);
     }
 
     #[test]
     fn it_performs_set_if_not_exists_with_ttl() {
         let mut store = MemoryStore::default();
 
-        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res1 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO);
         assert_eq!(true, res1.unwrap());
 
-        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::zero());
+        let res2 = store.set_if_not_exists_with_ttl("foo", 123, time::Duration::ZERO);
         assert_eq!(false, res2.unwrap());
     }
 }
