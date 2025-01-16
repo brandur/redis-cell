@@ -49,7 +49,7 @@ pub trait Store {
 // Implement the `Store` trait for a mutable reference. This is useful so that
 // we don't have to assign a lifetime (`'a`) to `RateLimiter`, thus simplifying
 // our code there by quite a bit.
-impl<'a, T: Store> Store for &'a mut T {
+impl<T: Store> Store for &mut T {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
@@ -166,7 +166,7 @@ impl<'a> InternalRedisStore<'a> {
     }
 }
 
-impl<'a> Store for InternalRedisStore<'a> {
+impl Store for InternalRedisStore<'_> {
     fn compare_and_swap_with_ttl(
         &mut self,
         key: &str,
