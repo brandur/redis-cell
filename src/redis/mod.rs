@@ -58,7 +58,7 @@ impl dyn Command {
         match command.run(r, str_args.as_slice()) {
             Ok(_) => raw::Status::Ok,
             Err(e) => {
-                raw::reply_with_error(ctx, format!("Cell error: {}\0", e).as_ptr());
+                raw::reply_with_error(ctx, format!("Cell error: {e}\0").as_ptr());
                 raw::Status::Err
             }
         }
@@ -107,22 +107,22 @@ impl Redis {
                 // it's left unchanged.
                 raw::call1::call(
                     self.ctx,
-                    format!("{}\0", command).as_ptr(),
-                    format!("{}\0", format).as_ptr(),
+                    format!("{command}\0").as_ptr(),
+                    format!("{format}\0").as_ptr(),
                     terminated_args[0].str_inner,
                 )
             }
             2 => raw::call2::call(
                 self.ctx,
-                format!("{}\0", command).as_ptr(),
-                format!("{}\0", format).as_ptr(),
+                format!("{command}\0").as_ptr(),
+                format!("{format}\0").as_ptr(),
                 terminated_args[0].str_inner,
                 terminated_args[1].str_inner,
             ),
             3 => raw::call3::call(
                 self.ctx,
-                format!("{}\0", command).as_ptr(),
-                format!("{}\0", format).as_ptr(),
+                format!("{command}\0").as_ptr(),
+                format!("{format}\0").as_ptr(),
                 terminated_args[0].str_inner,
                 terminated_args[1].str_inner,
                 terminated_args[2].str_inner,
@@ -189,8 +189,8 @@ impl Redis {
     pub fn log(&self, level: LogLevel, message: &str) {
         raw::log(
             self.ctx,
-            format!("{:?}\0", level).to_lowercase().as_ptr(),
-            format!("{}\0", message).as_ptr(),
+            format!("{level:?}\0").to_lowercase().as_ptr(),
+            format!("{message}\0").as_ptr(),
         );
     }
 
@@ -384,7 +384,7 @@ pub struct RedisString {
 
 impl RedisString {
     fn create(ctx: *mut raw::RedisModuleCtx, s: &str) -> RedisString {
-        let str_inner = raw::create_string(ctx, format!("{}\0", s).as_ptr(), s.len());
+        let str_inner = raw::create_string(ctx, format!("{s}\0").as_ptr(), s.len());
         RedisString { ctx, str_inner }
     }
 }

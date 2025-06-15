@@ -122,7 +122,7 @@ pub extern "C" fn RedisModule_OnLoad(
 ) -> raw::Status {
     if raw::init(
         ctx,
-        format!("{}\0", MODULE_NAME).as_ptr(),
+        format!("{MODULE_NAME}\0").as_ptr(),
         MODULE_VERSION,
         raw::REDISMODULE_APIVER_1,
     ) == raw::Status::Err
