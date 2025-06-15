@@ -131,7 +131,7 @@ impl Store for MemoryStore {
 
     fn log_debug(&self, message: &str) {
         if self.verbose {
-            println!("memory_store: {}", message);
+            println!("memory_store: {message}");
         }
     }
 
