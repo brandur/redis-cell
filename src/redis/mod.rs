@@ -2,7 +2,7 @@
 // instead.
 pub mod raw;
 
-use error::CellError;
+use crate::error::CellError;
 use libc::{c_int, c_long, c_longlong, size_t};
 use std::ptr;
 use std::string;

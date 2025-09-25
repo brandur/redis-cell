@@ -4,6 +4,7 @@ version = "0.4.0"
 authors = ["Brandur <brandur@mutelight.org>"]
 build = "build.rs"
 description = "A Redis module that provides rate limiting in Redis as a single command."
+edition = '2024'
 license = "MIT"
 repository = "https://github.com/brandur/redis-cell"
 
