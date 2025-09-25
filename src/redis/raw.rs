@@ -186,7 +186,7 @@ pub fn string_set(key: *mut RedisModuleKey, str: *mut RedisModuleString) -> Stat
 // during build and link against that. See build.rs for details.
 #[allow(improper_ctypes)]
 #[link(name = "redismodule", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     pub fn Export_RedisModule_Init(
         ctx: *mut RedisModuleCtx,
         modulename: *const u8,
@@ -276,7 +276,7 @@ extern "C" {
 }
 
 pub mod call1 {
-    use redis::raw;
+    use crate::redis::raw;
 
     pub fn call(
         ctx: *mut raw::RedisModuleCtx,
@@ -288,7 +288,7 @@ pub mod call1 {
     }
 
     #[allow(improper_ctypes)]
-    extern "C" {
+    unsafe extern "C" {
         pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,
@@ -300,7 +300,7 @@ pub mod call1 {
 }
 
 pub mod call2 {
-    use redis::raw;
+    use crate::redis::raw;
 
     pub fn call(
         ctx: *mut raw::RedisModuleCtx,
@@ -313,7 +313,7 @@ pub mod call2 {
     }
 
     #[allow(improper_ctypes)]
-    extern "C" {
+    unsafe extern "C" {
         pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,
@@ -326,7 +326,7 @@ pub mod call2 {
 }
 
 pub mod call3 {
-    use redis::raw;
+    use crate::redis::raw;
 
     pub fn call(
         ctx: *mut raw::RedisModuleCtx,
@@ -340,7 +340,7 @@ pub mod call3 {
     }
 
     #[allow(improper_ctypes)]
-    extern "C" {
+    unsafe extern "C" {
         pub static RedisModule_Call: extern "C" fn(
             ctx: *mut raw::RedisModuleCtx,
             cmdname: *const u8,

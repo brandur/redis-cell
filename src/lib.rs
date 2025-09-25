@@ -10,11 +10,11 @@ pub mod cell;
 pub mod error;
 mod redis;
 
-use cell::store;
-use error::CellError;
+use crate::cell::store;
+use crate::error::CellError;
+use crate::redis::Command;
+use crate::redis::raw;
 use libc::c_int;
-use redis::raw;
-use redis::Command;
 
 const MODULE_NAME: &str = "redis-cell";
 const MODULE_VERSION: c_int = 1;
@@ -103,7 +103,7 @@ impl Command for ThrottleCommand {
 
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn Throttle_RedisCommand(
     ctx: *mut raw::RedisModuleCtx,
     argv: *mut *mut raw::RedisModuleString,
@@ -114,7 +114,7 @@ pub extern "C" fn Throttle_RedisCommand(
 
 #[allow(non_snake_case)]
 #[allow(unused_variables)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn RedisModule_OnLoad(
     ctx: *mut raw::RedisModuleCtx,
     argv: *mut *mut raw::RedisModuleString,

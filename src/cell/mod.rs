@@ -2,7 +2,7 @@ extern crate time;
 
 pub mod store;
 
-use error::CellError;
+use crate::error::CellError;
 
 // Maximum number of times to retry set_if_not_exists/compare_and_swap
 // operations before returning an error.
@@ -299,8 +299,8 @@ fn nanoseconds(x: time::OffsetDateTime) -> u64 {
 mod tests {
     extern crate time;
 
-    use cell::*;
-    use error::CellError;
+    use crate::cell::*;
+    use crate::error::CellError;
 
     #[test]
     fn it_creates_rates_from_days() {
