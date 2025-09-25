@@ -197,16 +197,16 @@ impl<T: store::Store> RateLimiter<T> {
             //
             // Both of these cases are designed to work around the fact that
             // another limiter could be running in parallel.
-            let updated = if tat_val.is_none() {
-                self.store
-                    .set_if_not_exists_with_ttl(key, new_tat_ns, ttl)?
-            } else {
+            let updated = if let Some(some_tat_val) = tat_val {
                 self.store.compare_and_swap_with_ttl(
                     key,
-                    tat_val.unwrap(),
+                    some_tat_val,
                     new_tat_ns,
                     ttl,
                 )?
+            } else {
+                self.store
+                    .set_if_not_exists_with_ttl(key, new_tat_ns, ttl)?
             };
 
             if updated {
@@ -539,7 +539,7 @@ mod tests {
     }
 
     impl<'a> TestStore<'a> {
-        fn new(store: &'a mut store::MemoryStore) -> TestStore {
+        fn new(store: &'a mut store::MemoryStore) -> TestStore<'a> {
             TestStore {
                 clock: time::OffsetDateTime::now_utc(),
                 fail_updates: false,
