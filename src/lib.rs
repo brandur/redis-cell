@@ -14,7 +14,6 @@ use crate::cell::store;
 use crate::error::CellError;
 use crate::redis::Command;
 use crate::redis::raw;
-
 use libc::c_int;
 
 const MODULE_NAME: &str = "redis-cell";

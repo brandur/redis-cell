@@ -21,4 +21,3 @@ USER valkey
 
 CMD ["valkey-server", "--loadmodule", "/usr/local/lib/valkey/modules/libredis_cell.so"]
 
-

@@ -83,7 +83,7 @@ jobs:
           tags: redis-cell:latest
           push: false
       - name: Run end-to-end tests
-        run: cargo test --features e2e-test --test e2e -- --nocapture
+        run: cargo test --release --features e2e-test --test e2e -- --nocapture
 
   e2e-valkey:
     runs-on: ubuntu-latest
@@ -99,7 +99,7 @@ jobs:
           tags: valkey-cell:latest
           push: false
       - name: Run end-to-end tests
-        run: cargo test --features e2e-test,valkey --test e2e -- --nocapture
+        run: cargo test --release --features e2e-test,valkey --test e2e -- --nocapture
 
   # RELEASE JOBS
   #

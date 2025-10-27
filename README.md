@@ -159,6 +159,11 @@ Run the test suite:
     # with debug output on stdout
     cargo test it_rates_limits -- --nocapture
 
+To run the end-to-end test suite, make sure you got [docker](https://docs.docker.com/engine/)
+installed and hit:
+
+    make images && make test/e2e
+
 CI has checks for both [Rustfmt][rustfmt] and [Clippy][clippy] (Rust's linter).
 These can be installed and run locally using Rustup's component framework:
 

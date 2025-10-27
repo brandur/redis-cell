@@ -19,4 +19,3 @@ USER redis
 
 CMD ["redis-server"]
 
-

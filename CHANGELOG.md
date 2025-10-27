@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.1 - unreleased
+* [#84](https://github.com/brandur/redis-cell/pull/84) Support Valkey
+
 ## 0.4.0 - 2024-09-05
 * [#76](https://github.com/brandur/redis-cell/pull/76) Upgrade dependencies
 * [#77](https://github.com/brandur/redis-cell/pull/77) Include `Cargo.lock`
