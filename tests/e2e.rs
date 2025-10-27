@@ -75,12 +75,12 @@ mod utils {
     use testcontainers::{GenericImage, core::WaitFor};
 
     pub(super) async fn setup() -> (ContainerAsync<GenericImage>, ConnectionManager) {
-        let image = if cfg!(feature = "valkey") {
-            GenericImage::new("valkey-cell", "9.0.0-0.4.0")
+        let image_name = if cfg!(feature = "valkey") {
+            "valkey-cell"
         } else {
-            GenericImage::new("redis-cell", "8.2.2-0.4.0")
+            "redis-cell"
         };
-        let container = image
+        let container = GenericImage::new(image_name, "latest")
             .with_exposed_port(6379.tcp())
             .with_wait_for(WaitFor::message_on_stdout("Ready to accept connections"))
             .start()
