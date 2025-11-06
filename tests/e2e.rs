@@ -69,10 +69,30 @@ async fn it_works() {
 
 mod utils {
     use redis::aio::ConnectionManager;
+    use std::sync::LazyLock;
     use testcontainers::ContainerAsync;
     use testcontainers::core::IntoContainerPort as _;
     use testcontainers::runners::AsyncRunner;
     use testcontainers::{GenericImage, core::WaitFor};
+
+    static REDIS_CLIENT_MAX_RETRY: LazyLock<usize> = LazyLock::new(|| {
+        std::env::var("REDIS_CLIENT_MAX_RETRY")
+            .ok()
+            .map(|val| {
+                val.parse()
+                    .expect("valid usize value to have been passed from env")
+            })
+            .unwrap_or(3)
+    });
+    static REDIS_CLIENT_MAX_DELAY: LazyLock<u64> = LazyLock::new(|| {
+        std::env::var("REDIS_CLIENT_MAX_DELAY")
+            .ok()
+            .map(|val| {
+                val.parse()
+                    .expect("valid u64 value to have been passed from env")
+            })
+            .unwrap_or(1000)
+    });
 
     pub(super) async fn setup() -> (ContainerAsync<GenericImage>, ConnectionManager) {
         let image_name = if cfg!(feature = "valkey") {
@@ -88,7 +108,16 @@ mod utils {
             .unwrap();
         let port = container.get_host_port_ipv4(6379).await.unwrap();
         let client = redis::Client::open(("localhost", port)).unwrap();
-        let config = redis::aio::ConnectionManagerConfig::new().set_number_of_retries(1);
+        let config = redis::aio::ConnectionManagerConfig::new()
+            // empirically discovered: when using a custom runtime, e.g. Colima,
+            // the connection will oftentimes not get established with the first
+            // attempt even though the container is up and running and the `Ready
+            // to accept connections` message has appeared in the container's
+            // stdout; so we allow for a few retries but cap the delay time in
+            // between those attempt so that the test does not hang; we also
+            // make it possible to adjust those values via the environment
+            .set_number_of_retries(*REDIS_CLIENT_MAX_RETRY)
+            .set_max_delay(*REDIS_CLIENT_MAX_DELAY);
         let manager = redis::aio::ConnectionManager::new_with_config(client, config)
             .await
             .unwrap();
