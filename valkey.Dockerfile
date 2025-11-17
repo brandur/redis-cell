@@ -5,7 +5,7 @@ WORKDIR /redis-cell
 
 COPY src ./src
 COPY include ./include
-COPY Cargo* .
+COPY Cargo* ./
 COPY build.rs .
 
 RUN cargo build --release --features valkey
