@@ -192,14 +192,12 @@ jobs:
         with:
           name: release_url
 
-      - run: ls -R
-
       - name: "Get release info"
         id: get_release_info
         run: |
           echo ::set-output name=file_name::${REPOSITORY_NAME##*/}-${TAG_REF_NAME##*/}-${{ matrix.target }}.tar.gz # RepositoryName-v1.0.0-arch.tar.gz
 
-          value=`cat release_url/release_url.txt`
+          value=`cat release_url.txt`
           echo ::set-output name=upload_url::$value
         env:
           REPOSITORY_NAME: ${{ github.repository }}
@@ -286,7 +284,7 @@ jobs:
         run: |
           echo ::set-output name=file_name::${REPOSITORY_NAME##*/}-${TAG_REF_NAME##*/}-${{ matrix.target }}.tar.gz # RepositoryName-v1.0.0-arch.tar.gz
 
-          value=`cat release_url/release_url.txt`
+          value=`cat release_url.txt`
           echo ::set-output name=upload_url::$value
         env:
           REPOSITORY_NAME: ${{ github.repository }}
