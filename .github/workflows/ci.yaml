@@ -192,6 +192,8 @@ jobs:
         with:
           name: release_url
 
+      - run: ls -R
+
       - name: "Get release info"
         id: get_release_info
         run: |
