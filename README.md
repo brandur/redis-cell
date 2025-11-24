@@ -159,6 +159,20 @@ Run the test suite:
     # with debug output on stdout
     cargo test it_rates_limits -- --nocapture
 
+Since we are utilizing [testcontainers](https://github.com/testcontainers/testcontainers-rs) in
+the end-to-end test suite, make sure you got [docker](https://docs.docker.com/engine/)
+installed and - in case you are using a custom runtime, e.g. `Colima`, - make
+sure the `DOCKER_HOST` variable is available in the environment with the URL scheme
+set explicitly (requirement comes from the [bollard](https://github.com/fussybeaver/bollard) crate
+used by `testcontainers` internally), which can be achieved in the following
+manner on a unix-like system:
+
+    export DOCKER_HOST=unix://$HOME/.config/colima/default/docker.sock
+
+You should now be able to run the end-to-end tests with:
+
+    make images && make test/e2e
+
 CI has checks for both [Rustfmt][rustfmt] and [Clippy][clippy] (Rust's linter).
 These can be installed and run locally using Rustup's component framework:
 

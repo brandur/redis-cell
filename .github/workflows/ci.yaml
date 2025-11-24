@@ -69,7 +69,38 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  #
+  e2e-redis:
+    runs-on: ubuntu-latest
+    name: End-to-end tests against Redis
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build Redis with Redis Cell module
+        uses: docker/build-push-action@v6
+        with:
+          file: redis.Dockerfile
+          tags: redis-cell:latest
+          push: false
+      - name: Run end-to-end tests
+        run: cargo test --release --features e2e-test --test e2e -- --nocapture
+
+  e2e-valkey:
+    runs-on: ubuntu-latest
+    name: End-to-end tests against Valkey
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build Valkey with Redis Cell module
+        uses: docker/build-push-action@v6
+        with:
+          file: valkey.Dockerfile
+          tags: valkey-cell:latest
+          push: false
+      - name: Run end-to-end tests
+        run: cargo test --release --features e2e-test,valkey --test e2e -- --nocapture
+
   # RELEASE JOBS
   #
   # Note that releases are only pushed on `vX.X.X` tags, and those releases are
