@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 - unreleased
+## 0.5.0-rc.0 - unreleased
 * [#84](https://github.com/brandur/redis-cell/pull/84) Support Valkey
 
 ## 0.4.0 - 2024-09-05

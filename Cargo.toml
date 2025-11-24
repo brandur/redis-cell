@@ -1,6 +1,6 @@
 [package]
 name = "redis-cell"
-version = "0.4.1-rc.0"
+version = "0.5.0-rc.0"
 authors = ["Brandur <brandur@mutelight.org>"]
 build = "build.rs"
 description = "A Redis module that provides rate limiting in Redis as a single command."
