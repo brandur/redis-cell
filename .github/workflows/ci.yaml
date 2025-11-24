@@ -275,7 +275,7 @@ jobs:
           use-cross: true
 
       - name: "Download release URL file"
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v5
         with:
           name: release_url
 
