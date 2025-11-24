@@ -23,57 +23,36 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
-
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        uses: actions/checkout@v5
 
       - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy, rustfmt
-          override: true
-          profile: minimal
           toolchain: ${{ matrix.rust_toolchain }}
 
       - name: "Cargo: Check"
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check
 
       - name: "Cargo: Build"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
 
       - name: "Cargo: Test"
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
 
       - name: "Check: Clippy"
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: cargo clippy -- -D warnings
 
       - name: "Check: Rustfmt"
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        uses: actions-rust-lang/rustfmt@v1
 
   e2e-redis:
     runs-on: ubuntu-latest
     name: End-to-end tests against Redis
     steps:
-      - uses: actions/checkout@v5
+      - name: "Checkout"
+        uses: actions/checkout@v5
+
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - name: Build Redis with Redis Cell module
@@ -89,7 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     name: End-to-end tests against Valkey
     steps:
-      - uses: actions/checkout@v5
+      - name: "Checkout"
+        uses: actions/checkout@v5
+
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - name: Build Valkey with Redis Cell module
@@ -161,31 +142,16 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
-
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        uses: actions/checkout@v5
 
       - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          override: true
-          profile: minimal
-          target: ${{ matrix.target }}
-          toolchain: stable
+          components: clippy, rustfmt
+          toolchain: ${{ matrix.rust_toolchain }}
 
       - name: "Cargo: Build release"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target=${{ matrix.target }}
-          use-cross: true
+        run: cargo build --release --target=${{ matrix.target }}
 
       - name: "Download release URL file"
         uses: actions/download-artifact@v5
@@ -248,31 +214,17 @@ jobs:
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
-
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        uses: actions/checkout@v5
 
       - name: "Install: Rust toolchain"
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          override: true
-          profile: minimal
+          components: clippy, rustfmt
           target: ${{ matrix.target }}
-          toolchain: stable
+          toolchain: ${{ matrix.rust_toolchain }}
 
       - name: "Cargo: Build release"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target=${{ matrix.target }}
-          use-cross: true
+        run: cargo build --release --target=${{ matrix.target }}
 
       - name: "Download release URL file"
         uses: actions/download-artifact@v5
