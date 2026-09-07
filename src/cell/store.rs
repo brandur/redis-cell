@@ -205,10 +205,21 @@ impl Store for InternalRedisStore<'_> {
         // TODO: currently leveraging that CommandError and CellError are the
         // same thing, but we should probably reconcile this.
         let key = self.r.open_key(key);
-        Ok((
-            key.read()?.map(|s| s.parse::<u64>().unwrap()),
-            time::OffsetDateTime::now_utc(),
-        ))
+
+        // Must not panic: this runs under an `extern "C"` entry point, so a
+        // panic aborts the server instead of failing the command. An empty
+        // read means the key expired mid-operation, the same race handled in
+        // compare_and_swap_with_ttl above; anything else unparseable is
+        // another key's data, which we refuse rather than overwrite.
+        let value = match key.read()? {
+            Some(s) if s.is_empty() => None,
+            Some(s) => Some(s.parse::<u64>().map_err(|_| {
+                error!("Existing value at key is not a valid rate limit value")
+            })?),
+            None => None,
+        };
+
+        Ok((value, time::OffsetDateTime::now_utc()))
     }
 
     fn log_debug(&self, message: &str) {
